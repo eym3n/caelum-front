@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -284,12 +285,108 @@ const FIELD_LABELS: Record<
   },
 }
 
+// Map flat form data to normalized payload used by the builder streaming endpoint.
+function buildPayload(fd: Partial<FormData>) {
+  const split = (val?: string) => (val ? val.split(/[\n,]/).map((s) => s.trim()).filter(Boolean) : [])
+  return {
+    campaign: {
+      objective: fd.campaignObjective || "",
+      productName: fd.productServiceName || "",
+      primaryOffer: fd.primaryOffer || "",
+    },
+    audience: {
+      description: fd.targetAudienceDescription || "",
+      personaKeywords: split(fd.buyerPersonaKeywords),
+      uvp: fd.uniqueValueProposition || "",
+    },
+    benefits: {
+      topBenefits: split(fd.topBenefits),
+      features: split(fd.featureList),
+      emotionalTriggers: split(fd.emotionalTriggers),
+    },
+    trust: {
+      objections: split(fd.objections),
+      testimonials: split(fd.testimonials),
+      indicators: split(fd.trustIndicators),
+    },
+    conversion: {
+      primaryCTA: fd.primaryCTAText || "",
+      secondaryCTA: fd.secondaryCTAText || null,
+      primaryKPI: fd.primaryConversionKPI || "",
+    },
+    messaging: {
+      tone: fd.toneOfVoice || "",
+      seoKeywords: split(fd.targetSEOKeywords),
+      eventTracking: split(fd.eventTrackingSetup),
+    },
+    branding: {
+      colorPalette: { raw: fd.brandColorPalette || "" },
+      fonts: fd.fontStyleGuide || "",
+      layoutPreference: fd.pageLayoutPreference || "",
+    },
+    media: {
+      videoUrl: fd.videoURL?.trim() ? fd.videoURL : null,
+      privacyPolicyUrl: fd.privacyPolicyURL || "",
+      consentText: fd.gdprCcpaConsentText || "",
+    },
+    advanced: {
+      formFields: split(fd.formFieldsConfig),
+      analytics: { rawIDs: fd.analyticsIDs || "", gtag: fd.gtagID || "" },
+      customPrompt: fd.customPrompt || "",
+    },
+    assets: {
+      // We cannot serialize File objects directly in URL – pass file name placeholders; actual upload handled later.
+      logo: fd.logoUpload ? { name: fd.logoUpload.name } : null,
+      heroImage: fd.heroImage ? { name: fd.heroImage.name } : null,
+      secondaryImages: (fd.secondaryImages || []).map((f) => ({ name: f.name })),
+    },
+  }
+}
+
 export function LandingPageForm() {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<Partial<FormData>>({
+    // Prefilled sample data for faster testing
+    campaignObjective: "Generate high-conversion landing page for SaaS platform",
+    productServiceName: "DeployPro",
+    primaryOffer: "14-day enterprise trial",
+
+    targetAudienceDescription: "Senior DevOps engineers at scaling SaaS companies",
+    buyerPersonaKeywords: "DevOps, automation, multi-cloud, reliability",
+    uniqueValueProposition: "Policy-driven multi-region deployments with real-time rollback capabilities.",
+
+    topBenefits: "10x faster deployments\n99.99% uptime\nZero-config rollback",
+    featureList: "Declarative pipelines\nReal-time analytics\nMulti-cloud orchestration\nAPI-first integration",
+    emotionalTriggers: "Trust\nConfidence\nControl\nUrgency",
+
+    objections: "Too expensive\nComplex setup\nVendor lock-in",
+    testimonials: '"Cut deployment time from hours to minutes" - A. Patel\n"Rock-solid reliability" - J. Gomez',
+    trustIndicators: "10K+ customers\nISO 27001\nSOC 2 Type II\n99.99% SLA",
+
+    primaryCTAText: "Start Free Trial",
+    secondaryCTAText: "View Pricing",
+    primaryConversionKPI: "5% sign-ups",
+
+    toneOfVoice: "Technical",
+    targetSEOKeywords: "DevOps automation, multi-region deployment, rollback, SLA",
+    eventTrackingSetup: "button_click, form_submit, cta_hover",
+
+    brandColorPalette: "Primary: #0EA5E9, Accent: #8B5CF6, Neutral: #0F172A",
+    fontStyleGuide: "Heading: Inter Bold, Body: Manrope Regular",
+    pageLayoutPreference: "Single scroll hero",
     logoUpload: null,
     heroImage: null,
     secondaryImages: [],
+
+    videoURL: "",
+    privacyPolicyURL: "https://example.com/privacy",
+    gdprCcpaConsentText: "I agree to the Terms and Privacy Policy.",
+
+    formFieldsConfig: "Name, Email, Company, Role",
+    analyticsIDs: "GA ID: G-XXXXXXX, GTM ID: GTM-YYYYYYY",
+    gtagID: "G-ABCDEF1234",
+    customPrompt: "Make copy highly technical emphasizing deployment velocity and reliability SLAs.",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -351,7 +448,7 @@ export function LandingPageForm() {
   const validateStep = () => {
     const newErrors: Record<string, string> = {}
     currentStepData.fields.forEach((field) => {
-      if (field === "videoURL" || field === "secondaryCTAText") {
+      if (field === "videoURL" || field === "secondaryCTAText" || field === "heroImage") {
         // These are optional
         return
       }
@@ -386,9 +483,14 @@ export function LandingPageForm() {
   }
 
   const handleSubmit = async () => {
-    if (validateStep()) {
-      console.log("[v0] Form submitted with data:", formData)
-      alert("Landing page generation started! (This would be sent to your AI backend)")
+    if (!validateStep()) return
+    // Build normalized payload and navigate to builder route with encoded data
+    const payload = buildPayload(formData)
+    try {
+      const encoded = encodeURIComponent(JSON.stringify(payload))
+      router.push(`/builder?payload=${encoded}`)
+    } catch (err) {
+      console.error('Failed to encode payload', err)
     }
   }
 
@@ -413,7 +515,7 @@ export function LandingPageForm() {
         {/* Progress bar */}
         <div className="mb-8 h-1 bg-card rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-accent to-primary transition-all duration-500"
+            className="h-full bg-linear-to-r from-accent to-primary transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -431,6 +533,7 @@ export function LandingPageForm() {
             {currentStepData.fields.map((field) => {
               const config = FIELD_LABELS[field]
               const value = formData[field as keyof FormData]
+              const stringValue = typeof value === "string" ? value : ""
               const error = errors[field]
 
               if (config.type === "file") {
@@ -519,14 +622,14 @@ export function LandingPageForm() {
                   {config.type === "textarea" ? (
                     <Textarea
                       placeholder={config.placeholder}
-                      value={value as string}
+                      value={stringValue}
                       onChange={(e) => handleInputChange(field, e.target.value)}
                       className={`min-h-24 rounded-lg bg-background/50 border ${error ? "border-destructive" : "border-border/50"} focus:border-accent transition-colors`}
                     />
                   ) : (
                     <Input
                       placeholder={config.placeholder}
-                      value={value as string}
+                      value={stringValue}
                       onChange={(e) => handleInputChange(field, e.target.value)}
                       className={`rounded-lg bg-background/50 border ${error ? "border-destructive" : "border-border/50"} focus:border-accent transition-colors`}
                     />
