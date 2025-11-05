@@ -39,9 +39,8 @@ export function PreviewPane({ status, refreshToken, toolStatus }: Props) {
   const shouldDisplayFrame = status === 'streaming' || status === 'completed'
   return (
     <div className="flex h-full flex-col bg-background">
-      <header className="flex h-12 items-center justify-between px-4 border-b border-(--color-border)">
+      <header className="flex h-14 items-center justify-between px-4 border-b border-(--color-border)">
         <h2 className="text-sm font-semibold tracking-tight">Live Preview</h2>
-        <span className="text-[10px] text-muted-foreground">placeholder</span>
       </header>
       <div className="relative flex-1 min-h-0 bg-(--color-card)">
         {shouldDisplayFrame && (
