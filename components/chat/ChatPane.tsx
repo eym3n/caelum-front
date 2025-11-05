@@ -86,11 +86,6 @@ export function ChatPane({ messages, status, onRestart, sessionId, error }: Prop
         )}
         {firstVisible && <MessageItem key="first-message" msg={firstVisible} />}
         {secondVisible && <MessageItem key="second-message" msg={secondVisible} />}
-        {toolStatus.shouldRender && (
-          <div className="mb-3 text-xs font-medium text-muted-foreground animate-pulse-fast" aria-live="polite">
-            {toolStatus.text || 'Working...'}
-          </div>
-        )}
         {remainingVisible.map((m, i) => (
           <MessageItem key={`msg-${i + 2}`} msg={m} />
         ))}

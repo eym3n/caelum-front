@@ -1,46 +1,17 @@
 "use client"
 import React, { useEffect, useState, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useStreamSession } from '@/components/chat/useStreamSession'
 import { ChatPane } from '@/components/chat/ChatPane'
 import { PreviewPane } from '@/components/chat/PreviewPane'
 import { ResizeHandle } from '@/components/chat/ResizeHandle'
-
-// Example payload matching earlier schema (simplified)
-const examplePayload = {
-  campaign: {
-    objective: 'Drive qualified free trial sign-ups for the core deployment platform',
-    productName: 'DeployPro',
-    primaryOffer: '14-day enterprise trial with guided onboarding',
-  },
-  audience: {
-    description: 'Senior DevOps engineers evaluating automation platforms',
-    personaKeywords: ['scaling', 'automation', 'governance', 'observability'],
-    uvp: 'Accelerate secure multi-region deployments with policy-driven workflows',
-  },
-}
+import type { StreamMessage } from '@/components/chat/types'
+import { usePayload } from '@/contexts/PayloadContext'
 
 export default function BuilderPage() {
   const { messages, status, start, reset, sessionId, error } = useStreamSession()
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const overridePayload = useMemo(() => {
-    const raw = searchParams.get('payload')
-    if (!raw) return null
-    // Attempt decode twice in case of double encoding
-    try {
-      const first = decodeURIComponent(raw)
-      try {
-        return JSON.parse(first)
-      } catch {
-        // maybe raw was already decoded
-        return JSON.parse(raw)
-      }
-    } catch (e) {
-      console.warn('Failed to parse payload param', e)
-      return null
-    }
-  }, [searchParams])
+  const { payload } = usePayload()
   const [ratio, setRatio] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('builder:ratio')
@@ -55,11 +26,51 @@ export default function BuilderPage() {
 
   useEffect(() => {
     if (status !== 'idle') return
-    const hasParam = !!searchParams.get('payload')
-    const payloadToSend = hasParam ? (overridePayload || examplePayload) : examplePayload
-    console.log('[builder] starting stream with', hasParam ? 'overridePayload' : 'examplePayload', payloadToSend)
-    start({ payload: payloadToSend })
-  }, [status, start, overridePayload, searchParams])
+    if (!payload) {
+      console.warn('[builder] No payload available, redirecting to /create')
+      router.push('/create')
+      return
+    }
+    console.log('[builder] Using payload from context:', payload)
+    start({ payload })
+  }, [status, start, payload, router])
+
+  // Compute tool status for preview pane toast
+  const toolStatus = useMemo(() => {
+    const isVisibleMessage = (msg: StreamMessage) =>
+      msg?.type === 'message' &&
+      msg?.node &&
+      !msg.node.includes('_tools') &&
+      (msg.node.includes('designer') || msg.node.includes('coder'))
+
+    let latestIndex = -1
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const candidate = messages[i]
+      if (candidate?.node?.includes('_tools')) {
+        latestIndex = i
+        break
+      }
+    }
+
+    if (latestIndex === -1) {
+      const shouldRender = status === 'initializing' || status === 'streaming'
+      return {
+        text: 'Working...',
+        shouldRender,
+      }
+    }
+
+    const hasAgentAfterTool = messages.slice(latestIndex + 1).some(isVisibleMessage)
+    if (hasAgentAfterTool) {
+      return { text: '', shouldRender: false }
+    }
+
+    const latestToolText = messages[latestIndex]?.text?.trim()
+    return {
+      text: latestToolText && latestToolText.length > 0 ? latestToolText : 'Working...',
+      shouldRender: true,
+    }
+  }, [messages, status])
 
   const previewStyle: React.CSSProperties = { flexGrow: ratio, flexBasis: 0 }
   const chatStyle: React.CSSProperties = { flexGrow: 1 - ratio, flexBasis: 0 }
@@ -68,7 +79,7 @@ export default function BuilderPage() {
     <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
       <div className="flex-1 flex flex-row min-h-0">
         <div style={previewStyle} className="flex flex-col min-h-0 min-w-0 border-r border-(--color-border)">
-          <PreviewPane status={status} refreshToken={`${status}-${messages.length}`} />
+          <PreviewPane status={status} refreshToken={`${status}-${messages.length}`} toolStatus={toolStatus} />
         </div>
         <ResizeHandle onResize={setRatio} />
         <div style={chatStyle} className="flex flex-col min-h-0 min-w-0">
@@ -76,7 +87,6 @@ export default function BuilderPage() {
             messages={messages}
             status={status}
             onRestart={() => {
-              reset()
               router.push('/create')
             }}
             sessionId={sessionId}

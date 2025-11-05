@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
+import { PayloadProvider } from "@/contexts/PayloadContext"
 
 // Switch to a crisper modern font stack (Inter) + keep mono for future code blocks.
 import { Inter, Geist_Mono as Font_Geist_Mono } from 'next/font/google'
@@ -25,7 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${fontSans.className} ${fontSans.variable} ${fontMono.variable} font-sans antialiased bg-[radial-gradient(circle_at_25%_25%,rgba(59,130,246,0.15),transparent_60%),radial-gradient(circle_at_75%_65%,rgba(139,92,246,0.12),transparent_70%)]`}>        
-        {children}
+        <PayloadProvider>
+          {children}
+        </PayloadProvider>
         <Analytics />
       </body>
     </html>

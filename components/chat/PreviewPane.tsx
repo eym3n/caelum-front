@@ -4,6 +4,7 @@ import React, { useMemo } from 'react'
 interface Props {
   status: string
   refreshToken: string
+  toolStatus?: { text: string; shouldRender: boolean }
 }
 
 const STATUS_LABELS: Record<string, { title: string; subtitle: string }> = {
@@ -29,8 +30,7 @@ const STATUS_LABELS: Record<string, { title: string; subtitle: string }> = {
   },
 }
 
-export function PreviewPane({ status, refreshToken }: Props) {
-  const meta = useMemo(() => STATUS_LABELS[status] ?? STATUS_LABELS.idle, [status])
+export function PreviewPane({ status, refreshToken, toolStatus }: Props) {
   const frameSrc = useMemo(() => {
     const baseUrl = 'http://localhost:3000/'
     const separator = baseUrl.includes('?') ? '&' : '?'
@@ -58,10 +58,12 @@ export function PreviewPane({ status, refreshToken }: Props) {
             <p className="text-sm text-muted-foreground">Initializing...</p>
           </div>
         )}
-        <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10 flex flex-col items-start gap-1 rounded-md bg-background/75 px-3 py-2 text-left text-[11px] text-muted-foreground backdrop-blur">
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{meta.title}</span>
-          <span className="text-[11px] leading-snug">{meta.subtitle}</span>
-        </div>
+        {toolStatus?.shouldRender && (
+          <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-(--color-border) bg-(--color-card) px-3 py-2 shadow-lg backdrop-blur animate-pulse-fast">
+            <div className="size-3 rounded-full border-2 border-(--color-border) border-t-(--color-muted) animate-spin" />
+            <span className="text-xs text-muted-foreground">{toolStatus.text || 'Working...'}</span>
+          </div>
+        )}
       </div>
     </div>
   )
