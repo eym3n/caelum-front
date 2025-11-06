@@ -20,6 +20,8 @@ export default function BuilderPage() {
     return 0.65 // preview width ratio
   })
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
+  const [isFollowUpStreaming, setIsFollowUpStreaming] = useState(false)
+  const [followUpToolText, setFollowUpToolText] = useState<string | null>(null)
 
   useEffect(() => {
     window.localStorage.setItem('builder:ratio', ratio.toString())
@@ -38,6 +40,10 @@ export default function BuilderPage() {
 
   // Compute tool status for preview pane toast
   const toolStatus = useMemo(() => {
+    // During follow-up streaming always show toast with latest tool text or generic working
+    if (isFollowUpStreaming) {
+      return { text: followUpToolText || 'Working...', shouldRender: true }
+    }
     const isVisibleMessage = (msg: StreamMessage) =>
       msg?.type === 'message' &&
       msg?.node &&
@@ -73,7 +79,7 @@ export default function BuilderPage() {
       text: latestToolText && latestToolText.length > 0 ? latestToolText : 'Working...',
       shouldRender: true,
     }
-  }, [messages, status])
+  }, [messages, status, isFollowUpStreaming, followUpToolText])
 
   const previewStyle: React.CSSProperties = { flexGrow: ratio, flexBasis: 0 }
   const chatStyle: React.CSSProperties = { flexGrow: 1 - ratio, flexBasis: 0 }
@@ -100,6 +106,14 @@ export default function BuilderPage() {
             sessionId={sessionId}
             error={error}
             onDeploySuccess={(url) => setDeployedUrl(url)}
+            onChatStreamState={(active) => {
+              setIsFollowUpStreaming(active)
+              if (!active) setFollowUpToolText(null)
+              else setFollowUpToolText('Working...')
+            }}
+            onToolMessage={(text) => {
+              setFollowUpToolText(text?.trim() || 'Working...')
+            }}
           />
         </div>
       </div>

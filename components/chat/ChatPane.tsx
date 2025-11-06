@@ -12,11 +12,13 @@ interface Props {
   sessionId: string
   error?: string
   onDeploySuccess?: (url: string) => void
+  onChatStreamState?: (active: boolean) => void
+  onToolMessage?: (text: string) => void
 }
 
 // Deprecated: previous single-bubble processed message approach removed.
 
-export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess }: Props) {
+export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploySuccess, setDeploySuccess] = useState(false)
@@ -90,6 +92,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
     const message = chatInput.trim()
     if (!message || isChatStreaming) return
   setIsChatStreaming(true)
+  if (onChatStreamState) onChatStreamState(true)
   setFollowUpMessages([])
     setChatInput('')
   const userId = `user-${Date.now()}`
@@ -129,8 +132,11 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
                 raw: jsonPart,
                 done: obj.type === 'done',
               }
-              if (msg.node && !msg.node.includes('coder')) {
-                // Ignore any non-coder messages (designer, clarify, tools, etc.)
+              if (msg.node && msg.node.includes('_tools')) {
+                if (onToolMessage) onToolMessage(msg.text || 'Working...')
+                // Do not alter conversation for tool messages
+              } else if (msg.node && !msg.node.includes('coder')) {
+                // Ignore non-coder, non-tool messages
               } else {
                 if (msg.type === 'message') {
                   setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
@@ -138,6 +144,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
                 if (msg.done) {
                   setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
                   setIsChatStreaming(false)
+                  if (onChatStreamState) onChatStreamState(false)
                 }
               }
             } catch (e) {
@@ -150,7 +157,9 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
           const jsonPart = buffered.trim().slice(5).trim()
           const obj = JSON.parse(jsonPart)
           const msg: StreamMessage = { type: obj.type, node: obj.node, text: obj.text, raw: jsonPart, done: obj.type === 'done' }
-          if (msg.node && !msg.node.includes('coder')) {
+          if (msg.node && msg.node.includes('_tools')) {
+            if (onToolMessage) onToolMessage(msg.text || 'Working...')
+          } else if (msg.node && !msg.node.includes('coder')) {
             // Skip non-coder buffered message
           } else {
             if (msg.type === 'message') {
@@ -163,9 +172,11 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
         } catch {}
       }
       setIsChatStreaming(false)
+      if (onChatStreamState) onChatStreamState(false)
     } catch (err) {
       console.error('Chat stream error', err)
       setIsChatStreaming(false)
+      if (onChatStreamState) onChatStreamState(false)
     }
   }
 
