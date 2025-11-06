@@ -5,6 +5,7 @@ interface Props {
   status: string
   refreshToken: string
   toolStatus?: { text: string; shouldRender: boolean }
+  deployedUrl?: string | null
 }
 
 const STATUS_LABELS: Record<string, { title: string; subtitle: string }> = {
@@ -30,7 +31,7 @@ const STATUS_LABELS: Record<string, { title: string; subtitle: string }> = {
   },
 }
 
-export function PreviewPane({ status, refreshToken, toolStatus }: Props) {
+export function PreviewPane({ status, refreshToken, toolStatus, deployedUrl }: Props) {
   const frameSrc = useMemo(() => {
     const baseUrl = 'http://localhost:3000/'
     const separator = baseUrl.includes('?') ? '&' : '?'
@@ -42,6 +43,27 @@ export function PreviewPane({ status, refreshToken, toolStatus }: Props) {
       <header className="flex h-14 items-center justify-between px-4 border-b border-(--color-border)">
         <h2 className="text-sm font-semibold tracking-tight">Live Preview</h2>
       </header>
+      {deployedUrl && (
+        <div className="flex items-center gap-3 px-4 py-2 text-xs border-b border-(--color-border) bg-(--color-card)">
+          <img src="/vercel-logo.svg" alt="Vercel" className="size-4 rounded-full" />
+          <a
+            href={`https://${deployedUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground hover:underline truncate max-w-[60%]"
+            title={deployedUrl}
+          >
+            {deployedUrl}
+          </a>
+          <button
+            onClick={() => navigator.clipboard.writeText(`https://${deployedUrl}`)}
+            className="rounded-md border border-(--color-border) bg-background px-2 py-1 hover:bg-(--color-card) transition-colors"
+          >
+            Copy URL
+          </button>
+          <span className="text-(--color-muted)">Deployed ✓</span>
+        </div>
+      )}
       <div className="relative flex-1 min-h-0 bg-(--color-card)">
         {shouldDisplayFrame && (
           <iframe

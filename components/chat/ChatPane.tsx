@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { StreamMessage } from './types'
 import Image from 'next/image'
 import { Bot } from 'lucide-react'
+import Markdown from '../ui/markdown'
 
 interface Props {
   messages: StreamMessage[]
@@ -10,17 +11,20 @@ interface Props {
   onRestart: () => void
   sessionId: string
   error?: string
+  onDeploySuccess?: (url: string) => void
 }
 
-interface ProcessedMessage {
-  text: string
-  working: boolean
-}
+// Deprecated: previous single-bubble processed message approach removed.
 
-export function ChatPane({ messages, status, onRestart, sessionId, error }: Props) {
+export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploySuccess, setDeploySuccess] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+  const [isChatStreaming, setIsChatStreaming] = useState(false)
+  const [followUpMessages, setFollowUpMessages] = useState<StreamMessage[]>([]) // transitional; will be removed
+  interface ConversationItem { id: string; role: 'user' | 'agent'; text: string; working?: boolean }
+  const [conversation, setConversation] = useState<ConversationItem[]>([])
 
   const handleDeploy = async () => {
     setIsDeploying(true)
@@ -34,7 +38,9 @@ export function ChatPane({ messages, status, onRestart, sessionId, error }: Prop
         },
       })
       if (response.ok) {
+        const url = `${sessionId}.vercel.app`
         setDeploySuccess(true)
+        if (onDeploySuccess) onDeploySuccess(url)
         setTimeout(() => setDeploySuccess(false), 2500)
       } else {
         console.error('Deploy failed', response.status, response.statusText)
@@ -52,38 +58,116 @@ export function ChatPane({ messages, status, onRestart, sessionId, error }: Prop
     }
   }, [messages, status])
 
-  const processedMessages = useMemo<ProcessedMessage[]>(() => {
-    let lastAgentMessage: { agent: string; text: string } | null = null
-    let sawDone = false
-
-    for (let i = 0; i < messages.length; i++) {
-      const m = messages[i]
-      if (!m) continue
-      if (m.node === 'user_brief' || m.node === 'intake_component') continue
-      if (m.node?.includes('_tools')) continue
-      const agentType = ['designer', 'coder', 'clarify'].find(a => m.node?.includes(a))
-      if (!agentType) continue
-      if (m.type === 'message') {
-        lastAgentMessage = { agent: agentType, text: (m.text || '').trim() }
-      } else if (m.type === 'done' && lastAgentMessage && lastAgentMessage.agent === agentType) {
-        sawDone = true
+  // Initial session streaming: maintain one agent working bubble, then finalize
+  useEffect(() => {
+    if ((status === 'initializing' || status === 'streaming') && conversation.length === 0) {
+      setConversation([{ id: 'agent-initial', role: 'agent', text: 'Working...', working: true }])
+    }
+    if (status === 'streaming') {
+      // Only surface coder messages; hide designer and clarify completely
+      const lastCoder = messages
+        .slice()
+        .reverse()
+        .find(m => m.type === 'message'
+          && m.node
+          && m.node.includes('coder'))
+      if (lastCoder) {
+        setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, text: (lastCoder.text || '').trim() || 'Working...' } : b))
+      }
+      // Mark done only when coder done event appears
+      if (messages.some(m => m.type === 'done' && m.node && m.node.includes('coder'))) {
+        setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, working: false } : b))
       }
     }
+    if (status === 'completed') {
+      setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, working: false } : b))
+    }
+  }, [status, messages, conversation.length])
+  // Include follow-up streaming state in dependencies so bubble updates
+  // processedMessages deprecated; conversation array drives rendering.
 
-    // While working (streaming or initializing) always show a bubble
-    if (!sawDone) {
-      if (status === 'initializing' || status === 'streaming') {
-        return [{ text: 'Working...', working: true }]
+  const sendFollowUp = async () => {
+    const message = chatInput.trim()
+    if (!message || isChatStreaming) return
+  setIsChatStreaming(true)
+  setFollowUpMessages([])
+    setChatInput('')
+  const userId = `user-${Date.now()}`
+  setConversation(prev => [...prev, { id: userId, role: 'user', text: message }])
+  const agentId = `agent-${Date.now()}`
+  setConversation(prev => [...prev, { id: agentId, role: 'agent', text: 'Working...', working: true }])
+    try {
+      const res = await fetch('http://localhost:8080/v1/agent/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-id': sessionId,
+        },
+        body: JSON.stringify({ message }),
+      })
+      if (!res.ok) throw new Error(`Chat request failed: ${res.status}`)
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No chat stream reader')
+      const decoder = new TextDecoder('utf-8')
+      let buffered = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffered += decoder.decode(value, { stream: true })
+        const lines = buffered.split(/\r?\n/)
+        buffered = lines.pop() || ''
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed || !trimmed.startsWith('data:')) continue
+            const jsonPart = trimmed.slice(5).trim()
+            try {
+              const obj = JSON.parse(jsonPart)
+              const msg: StreamMessage = {
+                type: obj.type,
+                node: obj.node,
+                text: obj.text,
+                raw: jsonPart,
+                done: obj.type === 'done',
+              }
+              if (msg.node && !msg.node.includes('coder')) {
+                // Ignore any non-coder messages (designer, clarify, tools, etc.)
+              } else {
+                if (msg.type === 'message') {
+                  setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
+                }
+                if (msg.done) {
+                  setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
+                  setIsChatStreaming(false)
+                }
+              }
+            } catch (e) {
+              console.error('Chat parse error', e)
+            }
+        }
       }
+      if (buffered.trim().startsWith('data:')) {
+        try {
+          const jsonPart = buffered.trim().slice(5).trim()
+          const obj = JSON.parse(jsonPart)
+          const msg: StreamMessage = { type: obj.type, node: obj.node, text: obj.text, raw: jsonPart, done: obj.type === 'done' }
+          if (msg.node && !msg.node.includes('coder')) {
+            // Skip non-coder buffered message
+          } else {
+            if (msg.type === 'message') {
+              setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
+            }
+            if (msg.done) {
+              setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
+            }
+          }
+        } catch {}
+      }
+      setIsChatStreaming(false)
+    } catch (err) {
+      console.error('Chat stream error', err)
+      setIsChatStreaming(false)
     }
-
-    if (sawDone && lastAgentMessage) {
-      return [{ text: lastAgentMessage.text || 'Done', working: false }]
-    }
-
-    // If status completed but no agent message, show nothing
-    return []
-  }, [messages, status])
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background">
@@ -135,24 +219,54 @@ export function ChatPane({ messages, status, onRestart, sessionId, error }: Prop
             Error: {error}
           </div>
         )}
-        {processedMessages.map((msg, i) => (
-          <div key={`msg-${i}`} className="flex gap-3">
-            <div className="shrink-0 mt-1">
-              <div className="size-8 rounded-full bg-(--color-card) border border-(--color-border) flex items-center justify-center">
-                <Bot className="size-4 text-muted-foreground" />
+        {conversation.map(item => (
+          item.role === 'agent' ? (
+            <div key={item.id} className="flex gap-3">
+              <div className="shrink-0 mt-1">
+                <div className="size-8 rounded-full bg-(--color-card) border border-(--color-border) flex items-center justify-center">
+                  <Bot className="size-4 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className={`inline-block max-w-[80%] rounded-2xl px-4 py-2 border text-foreground whitespace-pre-wrap wrap-break-word bg-(--color-card) border-(--color-border) ${item.working ? 'animate-pulse-fast' : ''}`}>
+                  <Markdown text={item.text} />
+                </div>
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className={`inline-block rounded-2xl px-4 py-2 bg-(--color-card) border border-(--color-border) text-foreground ${msg.working ? 'animate-pulse-fast' : ''}`}>
-                <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+          ) : (
+            <div key={item.id} className="flex gap-3 justify-end">
+              <div className="flex-1 min-w-0 flex justify-end">
+                <div className="inline-block max-w-[80%] rounded-2xl px-4 py-2 border text-foreground whitespace-pre-wrap wrap-break-word bg-[#2f2f2f] border-(--color-border)">
+                  <Markdown text={item.text} />
+                </div>
               </div>
             </div>
-          </div>
+          )
         ))}
         <div ref={bottomRef} />
       </div>
-      <div className="border-t border-(--color-border) p-3 bg-(--color-card) text-xs text-(--color-muted)">
-        Follow-up chat coming soon.
+      <div className="border-t border-(--color-border) p-3 bg-(--color-card)">
+        <div className="flex items-end gap-2">
+          <textarea
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendFollowUp()
+              }
+            }}
+            placeholder="Send a follow-up prompt..."
+            className="flex-1 resize-none rounded-md bg-background border border-(--color-border) px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-(--color-border) max-h-40 leading-relaxed wrap-break-word"
+            rows={1}
+          />
+          <button
+            onClick={sendFollowUp}
+            disabled={!chatInput.trim()}
+            className="h-10 px-5 rounded-md bg-white text-black text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >Send</button>
+        </div>
+        <p className="mt-2 text-[11px] text-(--color-muted)">Enter to send, Shift+Enter for newline.</p>
       </div>
     </div>
   )

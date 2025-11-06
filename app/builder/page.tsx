@@ -15,10 +15,11 @@ export default function BuilderPage() {
   const [ratio, setRatio] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('builder:ratio')
-      if (stored) return parseFloat(stored)
+      if (stored) return Math.min(0.6667, Math.max(0.35, parseFloat(stored)))
     }
     return 0.65 // preview width ratio
   })
+  const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
 
   useEffect(() => {
     window.localStorage.setItem('builder:ratio', ratio.toString())
@@ -41,7 +42,9 @@ export default function BuilderPage() {
       msg?.type === 'message' &&
       msg?.node &&
       !msg.node.includes('_tools') &&
-      (msg.node.includes('designer') || msg.node.includes('coder'))
+      !msg.node.includes('designer') &&
+      (msg.node.includes('clarify') ||
+      msg.node.includes('coder'))
 
     let latestIndex = -1
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -78,11 +81,16 @@ export default function BuilderPage() {
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
       <div className="flex-1 flex flex-row min-h-0">
-        <div style={previewStyle} className="flex flex-col min-h-0 min-w-0 border-r border-(--color-border)">
-          <PreviewPane status={status} refreshToken={`${status}-${messages.length}`} toolStatus={toolStatus} />
+        <div style={previewStyle} className="flex flex-col min-h-0 min-w-[33%] border-r border-(--color-border)">
+          <PreviewPane
+            status={status}
+            refreshToken={`${status}-${messages.length}`}
+            toolStatus={toolStatus}
+            deployedUrl={deployedUrl}
+          />
         </div>
         <ResizeHandle onResize={setRatio} />
-        <div style={chatStyle} className="flex flex-col min-h-0 min-w-0">
+        <div style={chatStyle} className="flex flex-col min-h-0 min-w-[33%]">
           <ChatPane
             messages={messages}
             status={status}
@@ -91,6 +99,7 @@ export default function BuilderPage() {
             }}
             sessionId={sessionId}
             error={error}
+            onDeploySuccess={(url) => setDeployedUrl(url)}
           />
         </div>
       </div>

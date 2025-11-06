@@ -19,7 +19,8 @@ export function ResizeHandle({ onResize }: Props) {
     if (!container) return
     const bounds = container.getBoundingClientRect()
     const x = e.clientX - bounds.left
-    const ratio = Math.min(0.85, Math.max(0.35, x / bounds.width)) // constrain
+  // Constrain preview max width to 2/3 (chat min width 1/3)
+  const ratio = Math.min(0.6667, Math.max(0.35, x / bounds.width))
     onResize(ratio)
   }, [onResize])
   const onPointerUp = useCallback((e: React.PointerEvent) => {
@@ -36,9 +37,9 @@ export function ResizeHandle({ onResize }: Props) {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      className="relative flex w-3 cursor-col-resize select-none items-center justify-center"
+      className="relative flex w-4 cursor-col-resize select-none items-center justify-center group"
     >
-      <div className="h-full w-px bg-(--color-border)" />
+      <div className="h-10 w-1.5 rounded-full bg-[#2a2a2a] group-hover:bg-[#3a3a3a] transition-colors" />
     </div>
   )
 }
