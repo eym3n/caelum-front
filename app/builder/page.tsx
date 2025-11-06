@@ -22,6 +22,7 @@ export default function BuilderPage() {
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
   const [isFollowUpStreaming, setIsFollowUpStreaming] = useState(false)
   const [followUpToolText, setFollowUpToolText] = useState<string | null>(null)
+  const [followUpRevision, setFollowUpRevision] = useState(0)
 
   useEffect(() => {
     window.localStorage.setItem('builder:ratio', ratio.toString())
@@ -90,7 +91,7 @@ export default function BuilderPage() {
         <div style={previewStyle} className="flex flex-col min-h-0 min-w-[33%] border-r border-(--color-border)">
           <PreviewPane
             status={status}
-            refreshToken={`${status}-${messages.length}`}
+            refreshToken={`${status}-${messages.length}-${followUpRevision}`}
             toolStatus={toolStatus}
             deployedUrl={deployedUrl}
           />
@@ -113,6 +114,9 @@ export default function BuilderPage() {
             }}
             onToolMessage={(text) => {
               setFollowUpToolText(text?.trim() || 'Working...')
+            }}
+            onChatProgress={() => {
+              setFollowUpRevision((r) => r + 1)
             }}
           />
         </div>

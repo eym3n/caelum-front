@@ -14,11 +14,12 @@ interface Props {
   onDeploySuccess?: (url: string) => void
   onChatStreamState?: (active: boolean) => void
   onToolMessage?: (text: string) => void
+  onChatProgress?: () => void
 }
 
 // Deprecated: previous single-bubble processed message approach removed.
 
-export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage }: Props) {
+export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage, onChatProgress }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploySuccess, setDeploySuccess] = useState(false)
@@ -99,6 +100,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   setConversation(prev => [...prev, { id: userId, role: 'user', text: message }])
   const agentId = `agent-${Date.now()}`
   setConversation(prev => [...prev, { id: agentId, role: 'agent', text: 'Working...', working: true }])
+    if (onChatProgress) onChatProgress()
     try {
       const res = await fetch('http://localhost:8080/v1/agent/chat/stream', {
         method: 'POST',
@@ -140,11 +142,13 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
               } else {
                 if (msg.type === 'message') {
                   setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
+                  if (onChatProgress) onChatProgress()
                 }
                 if (msg.done) {
                   setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
                   setIsChatStreaming(false)
                   if (onChatStreamState) onChatStreamState(false)
+                  if (onChatProgress) onChatProgress()
                 }
               }
             } catch (e) {
@@ -164,9 +168,11 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
           } else {
             if (msg.type === 'message') {
               setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
+              if (onChatProgress) onChatProgress()
             }
             if (msg.done) {
               setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
+              if (onChatProgress) onChatProgress()
             }
           }
         } catch {}
