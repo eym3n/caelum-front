@@ -44,9 +44,10 @@ interface FormData {
   brandColorPalette: string
   fontStyleGuide: string
   pageLayoutPreference: string
-  logoUpload: File | null
-  heroImage: File | null
-  secondaryImages: File[]
+  // Image asset fields now store public URLs (uploaded via /v1/uploads/upload-image)
+  logoUpload: string | null
+  heroImage: string | null
+  secondaryImages: string[]
 
   // Step 8: Media & URLs
   videoURL: string
@@ -336,15 +337,16 @@ function buildPayload(fd: Partial<FormData>) {
       customPrompt: fd.customPrompt || "",
     },
     assets: {
-      // API expects string file names, not objects
-      logo: fd.logoUpload ? fd.logoUpload.name : null,
-      heroImage: fd.heroImage ? fd.heroImage.name : null,
-      secondaryImages: (fd.secondaryImages || []).map((f) => f.name),
+        // Now already storing public URLs
+        logo: fd.logoUpload || null,
+        heroImage: fd.heroImage || null,
+        secondaryImages: fd.secondaryImages || [],
     },
   }
 }
 
 const DUMMY_DATA_SETS = [
+  
   {
     campaignObjective: "Generate high-conversion landing page for SaaS platform",
     productServiceName: "DeployPro",
@@ -2086,6 +2088,39 @@ const DUMMY_DATA_SETS = [
     gtagID: "G-KAR",
     customPrompt: "Use a light theme with dark gray and orange accents. Feature car fleet photos with specs, include booking calendar and pricing calculator, and add pickup location map.",
   },
+  {
+    campaignObjective: "Launch universal agentic AI landing page builder",
+    productServiceName: "Caelum.ai",
+    primaryOffer: "Free 7-day agentic build sprint + unlimited niche templates",
+    targetAudienceDescription: "Founders, marketers, and product teams across SaaS, eCommerce, services, and emerging niches",
+    buyerPersonaKeywords: "agentic AI, landing page builder, GPT-5, multi-niche, autonomous generation",
+    uniqueValueProposition: "Autonomous GPT-5 powered agent swarm that plans, composes, designs, and deploys conversion-tuned landing pages for any niche in minutes.",
+    topBenefits: "Multi-niche coverage\nAutonomous optimization\nBuilt-in experimentation\nIntegrated deployment",
+    featureList: "Agentic brief parsing\nSemantic niche expansion\nDynamic component library\nReal-time copy refinement\nMulti-variant testing orchestrator\nOne-click deploy",
+    emotionalTriggers: "Speed\nConfidence\nInnovation\nScale",
+    objections: "AI originality concerns\nQuality control\nBrand voice alignment\nComplexity",
+    testimonials: '"Generated 3 niche pages in under 10 minutes" - L. Ortega\n"Agent swarm increased conversions 34%" - P. Singh',
+    trustIndicators: "GPT-5 core\nAgent orchestration layer\nSOC2 roadmap\nEarly adopter community",
+    primaryCTAText: "Start Free Sprint",
+    secondaryCTAText: "View Templates",
+    primaryConversionKPI: "30% sprint-to-plan activation",
+    toneOfVoice: "Visionary yet practical",
+    targetSEOKeywords: "agentic AI landing page builder, GPT-5 marketing, autonomous page generation, AI deployment builder",
+    eventTrackingSetup: "brief_submit, agent_plan, variant_publish, deploy_complete",
+    brandColorPalette: "Primary: #7F5AF0, Accent: #00D8A4, Neutral: #0D1117",
+    fontStyleGuide: "Heading: Space Grotesk Bold, Body: Inter Regular",
+    pageLayoutPreference: "Hero + Agent timeline + Variant grid",
+    logoUpload: null,
+    heroImage: null,
+    secondaryImages: [],
+    videoURL: "",
+    privacyPolicyURL: "https://caelum.ai/privacy",
+    gdprCcpaConsentText: "I agree to receive agentic build updates.",
+    formFieldsConfig: "Name, Email, Company, Use Case",
+    analyticsIDs: "GA ID: G-CAELOM, GTM ID: GTM-CAE01",
+    gtagID: "G-CAELOM",
+    customPrompt: "Use a dark cosmos theme with aurora gradient (purple→teal). Showcase autonomous agent timeline, multi-niche template carousel, conversion uplift stats cards, real-time variant panel, and prominent deploy button.",
+  },
 ]
 
 export function LandingPageForm() {
@@ -2112,18 +2147,67 @@ export function LandingPageForm() {
     }
   }
 
-  const handleFileUpload = (field: string, files: FileList | null) => {
-    if (!files) return
+  // Upload single file or multiple (secondaryImages) to backend to obtain public URLs
+  const handleFileUpload = async (field: string, files: FileList | null) => {
+    if (!files || files.length === 0) return
 
-    if (field === "secondaryImages") {
-      setFormData((prev) => ({
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml',
+      'image/tiff',
+      'image/bmp',
+      'image/heic',
+      'image/avif',
+      'image/ico'
+    ]
+
+    const toUpload = Array.from(files).filter(f => allowedTypes.includes(f.type))
+    if (toUpload.length === 0) {
+      setErrors((prev) => ({ ...prev, [field]: 'Unsupported file type' }))
+      return
+    }
+
+    const uploadOne = async (file: File): Promise<string | null> => {
+      try {
+        const form = new FormData()
+        form.append('file', file)
+        const res = await fetch('http://localhost:8080/v1/uploads/upload-image', {
+          method: 'POST',
+          body: form,
+        })
+        if (!res.ok) throw new Error('Upload failed')
+        const data = await res.json()
+        // Assume API returns { url: string }
+        return data.url || null
+      } catch (e) {
+        console.error('Upload error', e)
+        return null
+      }
+    }
+
+    if (field === 'secondaryImages') {
+      const uploaded: string[] = []
+      for (const f of toUpload) {
+        const url = await uploadOne(f)
+        if (url) uploaded.push(url)
+      }
+      setFormData(prev => ({
         ...prev,
-        secondaryImages: [...(prev.secondaryImages || []), ...Array.from(files)],
+        secondaryImages: [...(prev.secondaryImages || []), ...uploaded]
       }))
     } else {
-      setFormData((prev) => ({
+      const url = await uploadOne(toUpload[0])
+      if (!url) {
+        setErrors(prev => ({ ...prev, [field]: 'Upload failed' }))
+        return
+      }
+      setFormData(prev => ({
         ...prev,
-        [field]: files[0],
+        [field]: url
       }))
     }
 
@@ -2137,15 +2221,15 @@ export function LandingPageForm() {
   }
 
   const removeFile = (field: string, index?: number) => {
-    if (field === "secondaryImages" && index !== undefined) {
-      setFormData((prev) => ({
+    if (field === 'secondaryImages' && index !== undefined) {
+      setFormData(prev => ({
         ...prev,
-        secondaryImages: prev.secondaryImages?.filter((_, i) => i !== index) || [],
+        secondaryImages: prev.secondaryImages?.filter((_, i) => i !== index) || []
       }))
     } else {
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
-        [field]: null,
+        [field]: null
       }))
     }
   }
@@ -2281,15 +2365,15 @@ export function LandingPageForm() {
                         />
                       </label>
 
-                      {/* Display uploaded files */}
-                      {(value as File[])?.length > 0 && (
+                      {/* Display uploaded URLs */}
+                      {Array.isArray(value) && value.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          {(value as File[]).map((file, idx) => (
+                          {value.map((url: string, idx: number) => (
                             <div
                               key={idx}
                               className="flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border/50"
                             >
-                              <span className="text-sm text-muted-foreground truncate">{file.name}</span>
+                              <span className="text-sm text-muted-foreground truncate">{url.split('/').pop()}</span>
                               <button
                                 onClick={() => removeFile(field, idx)}
                                 className="text-destructive hover:text-destructive/80"
@@ -2322,10 +2406,10 @@ export function LandingPageForm() {
                       />
                     </label>
 
-                    {/* Display uploaded file */}
-                    {value && (
+                    {/* Display uploaded URL */}
+                    {typeof value === 'string' && value.trim().length > 0 && (
                       <div className="mt-3 flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border/50">
-                        <span className="text-sm text-muted-foreground truncate">{(value as File).name}</span>
+                        <span className="text-sm text-muted-foreground truncate">{value.split('/').pop()}</span>
                         <button
                           onClick={() => removeFile(field)}
                           className="text-destructive hover:text-destructive/80"

@@ -4,8 +4,8 @@ import type { StreamMessage, BuilderState } from './types'
 import { generateSessionId } from '@/lib/session'
 
 interface StartOptions {
-  payload: any // root object to send directly
-  files?: File[]
+  payload: any // root object to send directly (now includes image URLs, not File objects)
+  // files deprecated: initialization endpoint now expects URLs only
   endpoint?: string
 }
 
@@ -67,7 +67,7 @@ export function useStreamSession() {
     startedRef.current = false
   }, [])
 
-  const start = useCallback(async ({ payload, files = [], endpoint = 'http://localhost:8080/v1/agent/init/stream' }: StartOptions) => {
+  const start = useCallback(async ({ payload, endpoint = 'http://localhost:8080/v1/agent/init/stream' }: StartOptions) => {
     if (startedRef.current) return
     startedRef.current = true
     const sessionId = state.sessionId
@@ -87,29 +87,25 @@ export function useStreamSession() {
       status: 'initializing',
       messages: [...s.messages, userBriefMessage, componentAckMessage],
     }))
-  const form = new FormData()
-  // Send raw payload JSON as a simple form field (no filename) to ensure backend treats it as text not file.
-  form.append('payload', JSON.stringify(payload))
-    files.forEach((f, i) => form.append('assets', f, f.name || `asset-${i}`))
+    // Send JSON body directly (cloud-native, assets already URLs)
+    const body = JSON.stringify({ payload })
 
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
-      // Debug: list form entries
-      for (const [k, v] of form.entries()) {
-        if (typeof v === 'string') {
-          console.log('[stream] form field', k, v.slice(0, 120) + (v.length > 120 ? '…' : ''))
-        } else {
-          console.log('[stream] file field', k, (v as File).name, (v as File).type, (v as File).size)
-        }
-      }
+      // Debug: payload keys
+      try {
+        const parsed = JSON.parse(body)
+        console.log('[stream] init payload keys', Object.keys(parsed.payload || {}))
+      } catch {}
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'x-session-id': sessionId,
+          'Content-Type': 'application/json'
         },
-        body: form,
+        body,
         signal: controller.signal,
       })
       if (!res.ok) {
