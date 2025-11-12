@@ -67,7 +67,7 @@ export function useStreamSession() {
     startedRef.current = false
   }, [])
 
-  const start = useCallback(async ({ payload, endpoint = 'http://localhost:8080/v1/agent/init/stream' }: StartOptions) => {
+  const start = useCallback(async ({ payload, endpoint = 'https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/init/stream' }: StartOptions) => {
     if (startedRef.current) return
     startedRef.current = true
     const sessionId = state.sessionId

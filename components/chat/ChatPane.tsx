@@ -33,7 +33,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
     setIsDeploying(true)
     setDeploySuccess(false)
     try {
-      const response = await fetch('http://localhost:8080/v1/agent/deploy/vercel', {
+      const response = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/deploy/vercel', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   setConversation(prev => [...prev, { id: agentId, role: 'agent', text: 'Working...', working: true }])
     if (onChatProgress) onChatProgress()
     try {
-      const res = await fetch('http://localhost:8080/v1/agent/chat/stream', {
+      const res = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
