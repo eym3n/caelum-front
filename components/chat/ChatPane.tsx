@@ -83,7 +83,23 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
       }
     }
     if (status === 'completed') {
-      setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, working: false } : b))
+      // When completed, ensure we show the last coder message (done event is separate, so filter by type === 'message')
+      const lastCoderMessage = messages
+        .slice()
+        .reverse()
+        .find(m => m.type === 'message'
+          && m.node
+          && m.node.includes('coder'))
+      if (lastCoderMessage) {
+        setConversation(prev => prev.map(b => 
+          b.id === 'agent-initial' 
+            ? { ...b, text: (lastCoderMessage.text || '').trim() || 'Working...', working: false }
+            : b
+        ))
+      } else {
+        // Fallback: just mark as not working
+        setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, working: false } : b))
+      }
     }
   }, [status, messages, conversation.length])
   // Include follow-up streaming state in dependencies so bubble updates
@@ -100,7 +116,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   setConversation(prev => [...prev, { id: userId, role: 'user', text: message }])
   const agentId = `agent-${Date.now()}`
   setConversation(prev => [...prev, { id: agentId, role: 'agent', text: 'Working...', working: true }])
-    if (onChatProgress) onChatProgress()
+    // Removed progress increment here to avoid triggering preview reload before any file/tool event
     try {
       const res = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/chat/stream', {
         method: 'POST',
@@ -136,19 +152,20 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
               }
               if (msg.node && msg.node.includes('_tools')) {
                 if (onToolMessage) onToolMessage(msg.text || 'Working...')
+                if (onChatProgress) onChatProgress() // Only tool (file) events advance progress for preview reload
                 // Do not alter conversation for tool messages
               } else if (msg.node && !msg.node.includes('coder')) {
                 // Ignore non-coder, non-tool messages
               } else {
                 if (msg.type === 'message') {
                   setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
-                  if (onChatProgress) onChatProgress()
+                  // Skip progress increment for each coder streaming chunk to prevent reload spam
                 }
                 if (msg.done) {
                   setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
                   setIsChatStreaming(false)
                   if (onChatStreamState) onChatStreamState(false)
-                  if (onChatProgress) onChatProgress()
+                  // Do not increment progress on coder done; reload only on tool/file events
                 }
               }
             } catch (e) {
@@ -163,16 +180,17 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
           const msg: StreamMessage = { type: obj.type, node: obj.node, text: obj.text, raw: jsonPart, done: obj.type === 'done' }
           if (msg.node && msg.node.includes('_tools')) {
             if (onToolMessage) onToolMessage(msg.text || 'Working...')
+            if (onChatProgress) onChatProgress()
           } else if (msg.node && !msg.node.includes('coder')) {
             // Skip non-coder buffered message
           } else {
             if (msg.type === 'message') {
               setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
-              if (onChatProgress) onChatProgress()
+              // coder message chunk; no progress increment
             }
             if (msg.done) {
               setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
-              if (onChatProgress) onChatProgress()
+              // coder done; no progress increment
             }
           }
         } catch {}

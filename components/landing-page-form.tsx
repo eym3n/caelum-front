@@ -2175,7 +2175,7 @@ export function LandingPageForm() {
       try {
         const form = new FormData()
         form.append('file', file)
-        const res = await fetch('http://localhost:8080/v1/uploads/upload-image', {
+        const res = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/uploads/upload-image', {
           method: 'POST',
           body: form,
         })

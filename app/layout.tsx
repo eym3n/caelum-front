@@ -29,7 +29,7 @@ export default function RootLayout({
         <PayloadProvider>
           {children}
         </PayloadProvider>
-        <Analytics />
+        {process.env.NODE_ENV === 'production' ? <Analytics /> : null}
       </body>
     </html>
   )
