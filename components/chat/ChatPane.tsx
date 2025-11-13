@@ -269,12 +269,12 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
         <div className="flex items-center gap-2">
           <button
             onClick={handleDeploy}
-            disabled={isDeploying || status !== 'completed'}
-            className="text-xs rounded-md px-4 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
+            disabled={true}
+            className="text-xs rounded-md px-4 py-1.5 bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
           >
             {isDeploying ? (
               <>
-                <div className="size-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <div className="size-3 rounded-full border-2 border-gray-300 border-t-gray-900 animate-spin" />
                 <span>Deploying...</span>
               </>
             ) : deploySuccess ? (
@@ -290,12 +290,6 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
                 <span>Deploy to Vercel</span>
               </>
             )}
-          </button>
-          <button
-            onClick={onRestart}
-            className="text-xs rounded-md px-3 py-1.5 border border-(--color-border) hover:bg-primary/10"
-          >
-            Restart
           </button>
         </div>
       </header>

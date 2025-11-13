@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { useStreamSession } from '@/components/chat/useStreamSession'
 import { ChatPane } from '@/components/chat/ChatPane'
 import LivePreview from '@/components/chat/LivePreview'
@@ -8,12 +9,15 @@ import { ResizeHandle } from '@/components/chat/ResizeHandle'
 import type { StreamMessage } from '@/components/chat/types'
 import { usePayload } from '@/contexts/PayloadContext'
 import Image from 'next/image'
-import { Smartphone, Maximize2, Minimize2 } from 'lucide-react'
+import { Smartphone, Maximize2, Minimize2, Moon, Sun } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function BuilderPage() {
   const { messages, status, start, reset, sessionId, error } = useStreamSession()
   const router = useRouter()
   const { payload } = usePayload()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const [ratio, setRatio] = useState<number>(() => {
     if (typeof window !== 'undefined') {
@@ -29,6 +33,10 @@ export default function BuilderPage() {
   const [followUpToolText, setFollowUpToolText] = useState<string | null>(null)
   // Manual refresh counter (no auto reloads)
   const [previewRefresh, setPreviewRefresh] = useState(0)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     window.localStorage.setItem('builder:ratio', ratio.toString())
@@ -141,11 +149,27 @@ export default function BuilderPage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="
+              hover:bg-(--color-card)"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              aria-label="Toggle theme"
+            >
+              {!mounted ? (
+                <Moon className="w-4 h-4" />
+              ) : theme === 'light' ? (
+                <Moon className="w-4 h-4" />
+              ) : (
+                <Sun className="w-4 h-4" />
+              )}
+            </Button>
             <button
               onClick={() => router.push('/create')}
               className="text-xs rounded-md px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              New Brief
+              Restart
             </button>
           </div>
         </div>
