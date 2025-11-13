@@ -2463,7 +2463,7 @@ export function LandingPageForm() {
             {currentStep === STEPS.length ? (
               <Button
                 onClick={handleSubmit}
-                className="flex-1 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold transition-all"
+                className="flex-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Generate Landing Page
@@ -2471,7 +2471,7 @@ export function LandingPageForm() {
             ) : (
               <Button
                 onClick={handleNext}
-                className="flex-1 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold transition-all"
+                className="flex-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all"
               >
                 Next
                 <ChevronRight className="w-4 h-4 ml-2" />
@@ -2486,7 +2486,7 @@ export function LandingPageForm() {
                 <div
                   key={step.id}
                   className={`h-1.5 rounded-full transition-all ${
-                    step.id <= currentStep ? "bg-accent w-6" : "bg-border w-2"
+                    step.id <= currentStep ? "bg-primary w-6" : "bg-border w-2"
                   }`}
                 />
               ))}

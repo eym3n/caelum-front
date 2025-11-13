@@ -4,15 +4,60 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Force minimal dark theme */
+  /* Light theme defaults */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  /* Main brand color */
+  --primary: #7269F8;
+  --primary-foreground: #ffffff;
+  /* Subtle surfaces */
+  --secondary: #f5f5ff;
+  --secondary-foreground: #1f1f1f;
+  --muted: #6b7280;
+  --muted-foreground: #4b5563;
+  --accent: #ecebff;
+  --accent-foreground: #111827;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #c7d2fe;
+  --chart-1: #7269F8;
+  --chart-2: #a5b4fc;
+  --chart-3: #60a5fa;
+  --chart-4: #34d399;
+  --chart-5: #f59e0b;
+  --radius: 0.875rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #f5f5ff;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #f3f4f6;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #c7d2fe;
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 10px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.08;
+  --shadow-color: #000000;
+}
+
+/* Dark theme overrides */
+.dark {
   --background: #050505;
   --foreground: #fafafa;
   --card: #0f0f0f;
   --card-foreground: #f5f5f5;
   --popover: #121212;
   --popover-foreground: #f5f5f5;
-  --primary: #e5e5e5;
-  --primary-foreground: #050505;
+  --primary: #7269F8;
+  --primary-foreground: #ffffff;
   --secondary: #141414;
   --secondary-foreground: #e5e5e5;
   --muted: #737373;
@@ -29,7 +74,6 @@
   --chart-3: #555555;
   --chart-4: #666666;
   --chart-5: #777777;
-  --radius: 0.875rem;
   --sidebar: #050505;
   --sidebar-foreground: #fafafa;
   --sidebar-primary: #1d1d1d;
@@ -100,7 +144,8 @@
   --shadow-spread: var(--shadow-spread);
   --shadow-blur: var(--shadow-blur);
   --shadow-y: var(--shadow-y);
-  --shadow-x: var(--shadow-x);}
+  --shadow-x: var(--shadow-x);
+}
 
 @layer base {
   *, *::before, *::after {
@@ -116,27 +161,27 @@
   }
 
   ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: #0a0a0a; }
-  ::-webkit-scrollbar-thumb { background: #222; border-radius: 8px; }
-  ::-webkit-scrollbar-thumb:hover { background: #333; }
+  ::-webkit-scrollbar-track { background: color-mix(in srgb, var(--background) 92%, black); }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--foreground) 15%, transparent); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 25%, transparent); }
 }
 
 /* Add AI-themed gradient backgrounds and animations */
 @layer utilities {
-  .glass-surface { background: #101010; border: 1px solid #232323; }
+  .glass-surface { background: var(--color-card); border: 1px solid var(--color-border); }
 
   .bg-grid {
-    background-image: linear-gradient(to right, rgba(96, 165, 250, 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(96, 165, 250, 0.05) 1px, transparent 1px);
+    background-image: linear-gradient(to right, rgba(114, 105, 248, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(114, 105, 248, 0.06) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 
   .glow-cyan {
-    box-shadow: 0 0 20px rgba(34, 211, 238, 0.2), 0 0 40px rgba(34, 211, 238, 0.1);
+    box-shadow: 0 0 20px rgba(114, 105, 248, 0.20), 0 0 40px rgba(114, 105, 248, 0.10);
   }
 
   .glow-cyan-lg {
-    box-shadow: 0 0 40px rgba(34, 211, 238, 0.3), 0 0 80px rgba(34, 211, 238, 0.15);
+    box-shadow: 0 0 40px rgba(114, 105, 248, 0.30), 0 0 80px rgba(114, 105, 248, 0.15);
   }
 
   .animate-float {

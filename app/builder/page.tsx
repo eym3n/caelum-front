@@ -7,11 +7,14 @@ import LivePreview from '@/components/chat/LivePreview'
 import { ResizeHandle } from '@/components/chat/ResizeHandle'
 import type { StreamMessage } from '@/components/chat/types'
 import { usePayload } from '@/contexts/PayloadContext'
+import Image from 'next/image'
+import { Smartphone, Maximize2, Minimize2 } from 'lucide-react'
 
 export default function BuilderPage() {
   const { messages, status, start, reset, sessionId, error } = useStreamSession()
   const router = useRouter()
   const { payload } = usePayload()
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
   const [ratio, setRatio] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('builder:ratio')
@@ -19,6 +22,8 @@ export default function BuilderPage() {
     }
     return 0.65 // preview width ratio
   })
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const prevRatioRef = React.useRef<number>(0.65)
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
   const [isFollowUpStreaming, setIsFollowUpStreaming] = useState(false)
   const [followUpToolText, setFollowUpToolText] = useState<string | null>(null)
@@ -83,8 +88,24 @@ export default function BuilderPage() {
     }
   }, [messages, status, isFollowUpStreaming, followUpToolText])
 
-  const previewStyle: React.CSSProperties = { flexGrow: ratio, flexBasis: 0 }
+  const previewStyle: React.CSSProperties = isFullscreen
+    ? { flexGrow: 1, flexBasis: '100%' }
+    : { flexGrow: ratio, flexBasis: 0 }
   const chatStyle: React.CSSProperties = { flexGrow: 1 - ratio, flexBasis: 0 }
+
+  const clampRatio = (r: number) => Math.min(0.6667, Math.max(0.35, r))
+  const setPreviewWidthPx = (targetPx: number) => {
+    const container = containerRef.current
+    if (!container) return
+    const bounds = container.getBoundingClientRect()
+    const cs = getComputedStyle(container)
+    const gap = parseFloat(cs.columnGap || cs.gap || '0') || 0
+    const handle = container.querySelector('[role=\"separator\"]') as HTMLElement | null
+    const handleWidth = handle?.getBoundingClientRect().width || 16
+    const available = Math.max(1, bounds.width - gap - handleWidth)
+    const r = clampRatio(targetPx / available)
+    setRatio(r)
+  }
 
   // Only enable WebContainer after first real streamed event (has 'raw' property from backend)
   // Exclude synthetic messages (user_brief, intake_component) added before streaming starts
@@ -101,12 +122,67 @@ export default function BuilderPage() {
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
-      <div className="flex-1 flex flex-row min-h-0">
-        <div style={previewStyle} className="flex flex-col min-h-0 min-w-[33%] border-r border-(--color-border)">
-          {/* Wrapper header to match previous PreviewPane styling */}
-          <header className="flex h-14 items-center justify-between px-4 border-b border-(--color-border)">
-            <h2 className="text-sm font-semibold tracking-tight">Live Preview</h2>
+      {/* Background accents */}
+      <div className="fixed inset-0 bg-grid pointer-events-none" />
+      <div className="fixed -top-40 -left-40 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(114,105,248,0.14),transparent_60%)] blur-2xl pointer-events-none" />
+      <div className="fixed -bottom-40 -right-40 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(114,105,248,0.10),transparent_60%)] blur-2xl pointer-events-none" />
+
+      {/* Builder top bar */}
+      <header className="relative z-10 border-b border-(--color-border) bg-background/70 backdrop-blur">
+        <div className="h-14 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="caelum.ai" width={18} height={18} />
+            <span className="text-sm font-semibold">caelum.ai Builder</span>
+            <span className="ml-3 text-[11px] text-(--color-muted)">Session</span>
+            <code className="text-[11px] px-1.5 py-0.5 rounded bg-(--color-card) border border-(--color-border)">{sessionId.slice(0, 8)}</code>
+            <span className="ml-2 inline-flex items-center gap-1.5 text-[11px] rounded-full border border-(--color-border) bg-(--color-card) px-2 py-0.5">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <span className="capitalize">{status}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push('/create')}
+              className="text-xs rounded-md px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              New Brief
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 flex flex-row min-h-0 gap-3 px-4 sm:px-6 lg:px-8 py-3" data-resize-container ref={containerRef}>
+        <div style={previewStyle} className="flex flex-col min-h-0 min-w-[33%] border border-(--color-border) bg-(--color-card) rounded-xl shadow-sm overflow-hidden">
+          {/* Pane header */}
+          <header className="flex h-12 items-center justify-between px-4 border-b border-(--color-border) bg-[linear-gradient(180deg,rgba(114,105,248,0.06),transparent)]">
+            <h2 className="text-xs font-semibold tracking-tight">Live Preview</h2>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  // Approximate mobile width ~ 390px
+                  setIsFullscreen(false)
+                  setPreviewWidthPx(390)
+                }}
+                className="text-xs rounded-md px-2.5 py-1.5 border border-(--color-border) bg-background hover:bg-(--color-card)"
+                title="Mobile view"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  if (!isFullscreen) {
+                    prevRatioRef.current = ratio
+                    setIsFullscreen(true)
+                  } else {
+                    setIsFullscreen(false)
+                    setRatio(clampRatio(prevRatioRef.current || 0.65))
+                  }
+                }}
+                className="text-xs rounded-md px-2.5 py-1.5 border border-(--color-border) bg-background hover:bg-(--color-card)"
+                title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+              >
+                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </button>
               <button
                 onClick={() => {
                   console.log('[Builder] Refresh button clicked', { hasFirstStreamedEvent, currentRefresh: previewRefresh });
@@ -117,7 +193,7 @@ export default function BuilderPage() {
                   });
                 }}
                 disabled={!hasFirstStreamedEvent}
-                className="text-xs rounded-md px-3 py-1.5 border border-(--color-border) hover:bg-(--color-card) disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-xs rounded-md px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >Refresh</button>
             </div>
           </header>
@@ -139,8 +215,13 @@ export default function BuilderPage() {
             )}
           </div>
         </div>
-        <ResizeHandle onResize={setRatio} />
-        <div style={chatStyle} className="flex flex-col min-h-0 min-w-[33%]">
+        <div style={{ display: isFullscreen ? 'none' : undefined }}>
+          <ResizeHandle onResize={setRatio} />
+        </div>
+        <div
+          style={isFullscreen ? { display: 'none' } : chatStyle}
+          className="flex flex-col min-h-0 min-w-[33%] border border-(--color-border) bg-(--color-card) rounded-xl shadow-sm overflow-hidden"
+        >
           <ChatPane
             messages={messages}
             status={status}

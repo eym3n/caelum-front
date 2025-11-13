@@ -2,8 +2,45 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { StreamMessage } from './types'
 import Image from 'next/image'
-import { Bot } from 'lucide-react'
 import Markdown from '../ui/markdown'
+
+// Fast typewriter for the latest agent message.
+// Defined at module scope so it doesn't remount on parent re-renders.
+function TypewriterText({ text, active }: { text: string; active: boolean }) {
+  const [visible, setVisible] = useState<number>(active ? 0 : (text?.length || 0))
+  const textRef = useRef(text)
+  const activeRef = useRef(active)
+
+  useEffect(() => {
+    textRef.current = text
+  }, [text])
+  useEffect(() => {
+    activeRef.current = active
+    if (!active) setVisible(text.length)
+  }, [active, text.length])
+
+  useEffect(() => {
+    if (!activeRef.current) return
+    let timer: number | null = null
+    const tick = () => {
+      setVisible((v) => {
+        const target = textRef.current?.length ?? 0
+        if (v >= target) return target
+        const increment = Math.max(3, Math.ceil(target / 30))
+        const next = Math.min(target, v + increment)
+        return next
+      })
+      timer = window.setTimeout(tick, 12) as unknown as number
+    }
+    timer = window.setTimeout(tick, 12) as unknown as number
+    return () => {
+      if (timer) window.clearTimeout(timer as unknown as number)
+    }
+  }, [text])
+
+  const renderText = active ? (text?.slice(0, visible) ?? '') : (text ?? '')
+  return <Markdown text={renderText} />
+}
 
 interface Props {
   messages: StreamMessage[]
@@ -28,6 +65,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   const [followUpMessages, setFollowUpMessages] = useState<StreamMessage[]>([]) // transitional; will be removed
   interface ConversationItem { id: string; role: 'user' | 'agent'; text: string; working?: boolean }
   const [conversation, setConversation] = useState<ConversationItem[]>([])
+  const prevConversationLenRef = useRef(0)
 
   const handleDeploy = async () => {
     setIsDeploying(true)
@@ -104,6 +142,24 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   }, [status, messages, conversation.length])
   // Include follow-up streaming state in dependencies so bubble updates
   // processedMessages deprecated; conversation array drives rendering.
+  // (No-op here; TypewriterText moved to module scope to avoid remount during parent updates.)
+
+  // Auto-scroll when a new message is appended (user or agent)
+  useEffect(() => {
+    const prev = prevConversationLenRef.current
+    const curr = conversation.length
+    if (curr > prev && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+    prevConversationLenRef.current = curr
+  }, [conversation.length])
+
+  // Keep pinned to bottom while streaming updates modify the latest bubble
+  useEffect(() => {
+    if (!bottomRef.current) return
+    // Use instant scroll during streaming to avoid queuing many smooth animations
+    bottomRef.current.scrollIntoView({ behavior: isChatStreaming ? 'auto' : 'smooth', block: 'end' })
+  }, [conversation, isChatStreaming])
 
   const sendFollowUp = async () => {
     const message = chatInput.trim()
@@ -206,7 +262,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background">
-      <header className="flex h-14 items-center justify-between px-4 border-b border-(--color-border)">
+      <header className="flex h-12 items-center justify-between px-4 border-b border-(--color-border) bg-[linear-gradient(180deg,rgba(114,105,248,0.06),transparent)]">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold tracking-tight">Build Session</h2>
         </div>
@@ -214,11 +270,11 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
           <button
             onClick={handleDeploy}
             disabled={isDeploying || status !== 'completed'}
-            className="text-xs rounded-md px-4 py-1.5 bg-white text-black hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
+            className="text-xs rounded-md px-4 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
           >
             {isDeploying ? (
               <>
-                <div className="size-3 rounded-full border-2 border-black/20 border-t-black animate-spin" />
+                <div className="size-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 <span>Deploying...</span>
               </>
             ) : deploySuccess ? (
@@ -237,7 +293,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
           </button>
           <button
             onClick={onRestart}
-            className="text-xs rounded-md px-3 py-1.5 border border-(--color-border) hover:bg-(--color-card)"
+            className="text-xs rounded-md px-3 py-1.5 border border-(--color-border) hover:bg-primary/10"
           >
             Restart
           </button>
@@ -258,20 +314,23 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
           item.role === 'agent' ? (
             <div key={item.id} className="flex gap-3">
               <div className="shrink-0 mt-1">
-                <div className="size-8 rounded-full bg-(--color-card) border border-(--color-border) flex items-center justify-center">
-                  <Bot className="size-4 text-muted-foreground" />
+                <div className="size-8 rounded-full border border-(--color-border) overflow-hidden bg-background">
+                  <Image src="/logo.svg" alt="caelum.ai" width={32} height={32} />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
-                <div className={`inline-block max-w-[80%] rounded-2xl px-4 py-2 border text-foreground whitespace-pre-wrap wrap-break-word bg-(--color-card) border-(--color-border) ${item.working ? 'animate-pulse-fast' : ''}`}>
-                  <Markdown text={item.text} />
+                <div className={`inline-block max-w-[80%] rounded-2xl px-4 py-2 border text-foreground whitespace-pre-wrap wrap-break-word bg-(--color-card) border-(--color-border) shadow-sm ${item.working ? 'animate-pulse-fast' : ''}`}>
+                  <TypewriterText
+                    text={item.text}
+                    active={conversation.findLastIndex(c => c.role === 'agent') === conversation.indexOf(item)}
+                  />
                 </div>
               </div>
             </div>
           ) : (
             <div key={item.id} className="flex gap-3 justify-end">
               <div className="flex-1 min-w-0 flex justify-end">
-                <div className="inline-block max-w-[80%] rounded-2xl px-4 py-2 border text-foreground whitespace-pre-wrap wrap-break-word bg-[#2f2f2f] border-(--color-border)">
+                <div className="inline-block max-w-[80%] rounded-2xl px-4 py-2 border text-primary-foreground whitespace-pre-wrap wrap-break-word bg-primary border-transparent shadow-sm">
                   <Markdown text={item.text} />
                 </div>
               </div>
@@ -292,13 +351,13 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
               }
             }}
             placeholder="Send a follow-up prompt..."
-            className="flex-1 resize-none rounded-md bg-background border border-(--color-border) px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-(--color-border) max-h-40 leading-relaxed wrap-break-word"
+            className="flex-1 resize-none rounded-md bg-background border border-(--color-border) px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-ring)] max-h-40 leading-relaxed wrap-break-word"
             rows={1}
           />
           <button
             onClick={sendFollowUp}
             disabled={!chatInput.trim()}
-            className="h-10 px-5 rounded-md bg-white text-black text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-10 px-5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >Send</button>
         </div>
         <p className="mt-2 text-[11px] text-(--color-muted)">Enter to send, Shift+Enter for newline.</p>
