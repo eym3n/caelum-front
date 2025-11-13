@@ -210,13 +210,37 @@ export function SectionSelector({
     | { kind: "core"; section: SectionType }
     | { kind: "custom"; section: CustomSection }
 
-  const getOrderedItems = (): OrderedItem[] => [
-    ...selectedSections.map<OrderedItem>((s) => ({ kind: "core", section: s })),
-    ...(customSections || []).map<OrderedItem>((cs) => ({ kind: "custom", section: cs })),
-  ]
+  const [orderedItems, setOrderedItems] = React.useState<OrderedItem[]>([])
+
+  // Keep a stable combined order of core + custom sections
+  React.useEffect(() => {
+    setOrderedItems((prev) => {
+      const map = new Map<string, OrderedItem>()
+      prev.forEach((item) => {
+        const key = item.kind === "core" ? item.section : `custom:${item.section.id}`
+        map.set(key, item)
+      })
+
+      const next: OrderedItem[] = []
+
+      selectedSections.forEach((section) => {
+        const key = section
+        const existing = map.get(key)
+        next.push(existing || { kind: "core", section })
+      })
+
+      customSections.forEach((section) => {
+        const key = `custom:${section.id}`
+        const existing = map.get(key)
+        next.push(existing || { kind: "custom", section })
+      })
+
+      return next
+    })
+  }, [selectedSections, customSections])
 
   const handleDragStart = (index: number) => {
-    const items = getOrderedItems()
+    const items = orderedItems
     const item = items[index]
     if (item && item.kind === "core" && item.section === "hero" && HERO_FIXED) return // Can't drag hero
     setDraggedIndex(index)
@@ -243,7 +267,7 @@ export function SectionSelector({
       return
     }
 
-    const items = getOrderedItems()
+    const items = orderedItems
     const next = [...items]
     const [removed] = next.splice(draggedIndex, 1)
     next.splice(dropIndex, 0, removed)
@@ -264,6 +288,7 @@ export function SectionSelector({
       onCustomSectionsChange(nextCustom)
     }
 
+    setOrderedItems(next)
     setDraggedIndex(null)
     setDragOverIndex(null)
   }
@@ -415,7 +440,7 @@ export function SectionSelector({
           </span>
         </div>
         <div className="space-y-2.5 rounded-xl border border-border/60 bg-card/50 p-4">
-          {getOrderedItems().map((item, index) => {
+          {orderedItems.map((item, index) => {
             const isCore = item.kind === "core"
             const sectionKey = isCore ? item.section : item.section.id || `custom-${index}`
             const isHero = isCore && item.section === "hero"
