@@ -5,9 +5,79 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronRight, ChevronLeft, CheckCircle2, Upload, X, Dices } from "lucide-react"
+import { 
+  ChevronRight, 
+  ChevronLeft, 
+  CheckCircle2, 
+  Upload, 
+  X, 
+  Dices, 
+  Info,
+  Target,
+  Users,
+  Sparkles,
+  Shield,
+  MousePointerClick,
+  MessageSquare,
+  Search,
+  Palette,
+  Type,
+  Layout,
+  Image,
+  Video,
+  FileText,
+  Settings,
+  BarChart3,
+  Code,
+  Tag,
+  Heart,
+  AlertCircle,
+  Star,
+  TrendingUp,
+  Zap
+} from "lucide-react"
 import Link from "next/link"
 import { usePayload } from "@/contexts/PayloadContext"
+import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Progress } from "@/components/ui/progress"
+import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { TagInput } from "@/components/ui/tag-input"
+import { ThemeSelector } from "@/components/ui/theme-selector"
+import { SectionSelector } from "@/components/ui/section-selector"
+import type { SectionType } from "@/components/ui/section-preview"
+
+// Branded icons using assets from /public for specific fields
+const YouTubeLogoIcon: React.FC<{ className?: string }> = ({ className }) => (
+  // eslint-disable-next-line @next/next/no-img-element
+  <img
+    src="/youtube-color.svg"
+    alt="YouTube"
+    className={cn("h-4 w-4 object-contain", className)}
+  />
+)
+
+const GoogleAnalyticsLogoIcon: React.FC<{ className?: string }> = ({ className }) => (
+  // eslint-disable-next-line @next/next/no-img-element
+  <img
+    src="/google-analytics.svg"
+    alt="Google Analytics"
+    className={cn("h-4 w-4 object-contain", className)}
+  />
+)
+
+const GoogleTagManagerLogoIcon: React.FC<{ className?: string }> = ({ className }) => (
+  // eslint-disable-next-line @next/next/no-img-element
+  <img
+    src="/google-tag-manager.svg"
+    alt="Google Tag Manager"
+    className={cn("h-4 w-4 object-contain", className)}
+  />
+)
 
 interface FormData {
   // Step 1: Campaign Basics
@@ -41,20 +111,34 @@ interface FormData {
   eventTrackingSetup: string
 
   // Step 7: Branding & Visual
-  brandColorPalette: string
+  pageTheme: "light" | "dark" | ""
+  brandPrimary: string
+  brandAccent: string
+  brandNeutral: string
   fontStyleGuide: string
   pageLayoutPreference: string
   // Image asset fields now store public URLs (uploaded via /v1/uploads/upload-image)
   logoUpload: string | null
-  heroImage: string | null
-  secondaryImages: string[]
+  faviconUpload: string | null
 
-  // Step 8: Media & URLs
+  // Step 8: Section Selection & Positioning
+  selectedSections: SectionType[]
+  // Section-specific data
+  faqData: { question: string; answer: string }[]
+  pricingData: { name: string; price: string; features: string[]; cta: string }[]
+  statsData: { label: string; value: string; description?: string }[]
+  teamData: { name: string; role: string; bio?: string; image?: string }[]
+  testimonialsData: { quote: string; author: string; role?: string; company?: string; image?: string }[]
+  customSections: { id: string; name: string; description?: string; notes?: string }[]
+  // Per-section image assets (uploaded via API), keyed by section identifier (e.g. "hero", "benefits", "custom:<id>")
+  sectionAssets: Record<string, string[]>
+
+  // Step 9: Media & URLs
   videoURL: string
   privacyPolicyURL: string
   gdprCcpaConsentText: string
 
-  // Step 9: Advanced
+  // Step 10: Advanced
   formFieldsConfig: string
   analyticsIDs: string
   gtagID: string
@@ -66,7 +150,7 @@ const STEPS = [
     id: 1,
     title: "Campaign Basics",
     description: "What are you launching?",
-    fields: ["campaignObjective", "productServiceName", "primaryOffer"],
+    fields: ["productServiceName", "campaignObjective", "primaryOffer"],
   },
   {
     id: 2,
@@ -84,7 +168,7 @@ const STEPS = [
     id: 4,
     title: "Trust & Credibility",
     description: "Build confidence",
-    fields: ["objections", "testimonials", "trustIndicators"],
+    fields: ["objections", "trustIndicators"],
   },
   {
     id: 5,
@@ -103,22 +187,30 @@ const STEPS = [
     title: "Branding & Visual",
     description: "Your visual identity",
     fields: [
-      "brandColorPalette",
+      "pageTheme",
+      "brandPrimary",
+      "brandAccent",
+      "brandNeutral",
       "fontStyleGuide",
       "pageLayoutPreference",
       "logoUpload",
-      "heroImage",
-      "secondaryImages",
+      "faviconUpload",
     ],
   },
   {
     id: 8,
+    title: "Section Selection",
+    description: "Choose and arrange your page sections",
+    fields: ["selectedSections"],
+  },
+  {
+    id: 9,
     title: "Media & Legal",
     description: "Videos, URLs & compliance",
     fields: ["videoURL", "privacyPolicyURL", "gdprCcpaConsentText"],
   },
   {
-    id: 9,
+    id: 10,
     title: "Final Setup",
     description: "Analytics & AI prompt",
     fields: ["formFieldsConfig", "analyticsIDs", "gtagID", "customPrompt"],
@@ -127,163 +219,217 @@ const STEPS = [
 
 const FIELD_LABELS: Record<
   string,
-  { label: string; placeholder?: string; description?: string; type: "text" | "textarea" | "file" }
+  { 
+    label: string
+    placeholder?: string
+    description?: string
+    type: "text" | "textarea" | "file" | "theme" | "color" | "sections"
+    icon?: React.ComponentType<{ className?: string }>
+  }
 > = {
   campaignObjective: {
     label: "Campaign Objective",
     placeholder: "e.g., Lead generation, Sales, Signups",
     type: "text",
+    icon: Target,
   },
   productServiceName: {
     label: "Product / Service Name",
     placeholder: "e.g., CloudSync Pro",
     type: "text",
+    icon: Zap,
   },
   primaryOffer: {
     label: "Primary Offer",
     placeholder: "e.g., 30-day free trial, 50% off first month",
     type: "text",
+    icon: Sparkles,
   },
   targetAudienceDescription: {
     label: "Target Audience Description",
     placeholder: "e.g., SaaS founders, product managers, 25-40 years old",
     type: "textarea",
+    icon: Users,
   },
   buyerPersonaKeywords: {
     label: "Buyer Persona Keywords",
     placeholder: "e.g., scaling, automation, efficiency",
     type: "text",
+    icon: Tag,
   },
   uniqueValueProposition: {
     label: "Unique Value Proposition (UVP)",
     placeholder: "e.g., Only AI platform that combines X and Y",
     type: "textarea",
+    icon: TrendingUp,
   },
   topBenefits: {
     label: "Top 3–5 Benefits",
     placeholder: "e.g., 10x faster deployment, 99.9% uptime, 24/7 support",
     type: "textarea",
+    icon: Star,
   },
   featureList: {
     label: "Feature List",
     placeholder: "e.g., Real-time analytics, API-first, Multi-tenant",
     type: "textarea",
+    icon: Code,
   },
   emotionalTriggers: {
     label: "Emotional Triggers",
     placeholder: "e.g., Trust, Urgency, Exclusivity, Community",
     type: "textarea",
+    icon: Heart,
   },
   objections: {
     label: "Objections to Overcome",
     placeholder: "e.g., Too expensive, Complex setup, Limited support",
     type: "textarea",
+    icon: AlertCircle,
   },
   testimonials: {
     label: "Testimonials",
     placeholder: "e.g., Quote + attribution, or leave blank if you have none yet",
     type: "textarea",
+    icon: MessageSquare,
   },
   trustIndicators: {
     label: "Trust Indicators",
     placeholder: "e.g., 10K+ customers, 4.9/5 stars, ISO certified",
     type: "textarea",
+    icon: Shield,
   },
   primaryCTAText: {
     label: "Primary CTA Text",
     placeholder: "e.g., Start Free Trial, Get Started Now",
     type: "text",
+    icon: MousePointerClick,
   },
   secondaryCTAText: {
     label: "Secondary CTA Text",
     placeholder: "e.g., See Pricing, Watch Demo",
     type: "text",
+    icon: MousePointerClick,
   },
   primaryConversionKPI: {
     label: "Primary Conversion KPI",
     placeholder: "e.g., 5% sign-ups, 10% conversion rate",
     type: "text",
+    icon: BarChart3,
   },
   toneOfVoice: {
     label: "Tone of Voice",
     placeholder: "e.g., Formal, Friendly, Playful, Technical",
     type: "text",
+    icon: MessageSquare,
   },
   targetSEOKeywords: {
     label: "Target SEO Keywords",
     placeholder: "e.g., AI landing page builder, SaaS marketing tool",
     type: "text",
+    icon: Search,
   },
   eventTrackingSetup: {
     label: "Event Tracking Setup",
     placeholder: "e.g., Button clicks, Form submissions, Video plays",
     type: "textarea",
+    icon: BarChart3,
   },
-  brandColorPalette: {
-    label: "Brand Color Palette",
-    placeholder: "e.g., Primary: #0EA5E9, Accent: #8B5CF6, Neutral: #0F172A",
-    type: "text",
+  pageTheme: {
+    label: "Page Theme",
+    description: "Choose the overall theme for your landing page",
+    type: "theme",
+  },
+  brandPrimary: {
+    label: "Primary Color",
+    placeholder: "#7269F8",
+    type: "color",
+    icon: Palette,
+  },
+  brandAccent: {
+    label: "Accent Color",
+    placeholder: "#22C55E",
+    type: "color",
+    icon: Palette,
+  },
+  brandNeutral: {
+    label: "Neutral Color",
+    placeholder: "#E2E8F0",
+    type: "color",
+    icon: Palette,
   },
   fontStyleGuide: {
     label: "Font Style Guide",
     placeholder: "e.g., Heading: Inter Bold, Body: Geist Regular",
     type: "text",
+    icon: Type,
   },
   pageLayoutPreference: {
     label: "Page Layout Preference",
     placeholder: "e.g., Single scroll hero, Multi-section storytelling, Modular cards",
     type: "text",
+    icon: Layout,
   },
   logoUpload: {
     label: "Company Logo (Optional)",
     description: "Upload your company logo (PNG, JPG, SVG)",
     type: "file",
+    icon: Image,
   },
-  heroImage: {
-    label: "Hero Image (Optional)",
-    description: "Main hero image for the landing page (PNG, JPG, GIF up to 5MB)",
+  faviconUpload: {
+    label: "Favicon (Optional)",
+    description: "Upload a square favicon (ICO, PNG, SVG)",
     type: "file",
+    icon: Image,
   },
-  secondaryImages: {
-    label: "Secondary Asset Images",
-    description: "Additional images, features showcase, or UI screenshots (multiple files)",
-    type: "file",
+  selectedSections: {
+    label: "Page Sections",
+    description: "Select which sections to include and arrange their order",
+    type: "sections",
+    icon: Layout,
   },
   videoURL: {
     label: "Demo Video URL (Optional)",
     placeholder: "e.g., https://youtube.com/watch?v=... or Vimeo link",
     type: "text",
+    icon: YouTubeLogoIcon,
   },
   privacyPolicyURL: {
     label: "Privacy Policy URL",
     placeholder: "e.g., https://yoursite.com/privacy",
     type: "text",
+    icon: FileText,
   },
   gdprCcpaConsentText: {
     label: "GDPR/CCPA Consent Text",
     placeholder: "e.g., I agree to the privacy policy and terms of service",
     type: "textarea",
+    icon: Shield,
   },
   formFieldsConfig: {
     label: "Form Fields & Configuration",
     placeholder: "e.g., Name, Email, Company, Phone, API endpoint",
     type: "textarea",
+    icon: Settings,
   },
   analyticsIDs: {
     label: "Analytics IDs",
     placeholder: "e.g., GA ID: G-XXXXXX, GTM ID: GTM-XXXXXX",
     type: "text",
+    icon: GoogleAnalyticsLogoIcon,
   },
   gtagID: {
     label: "Google Tag (GTag) ID",
     placeholder: "e.g., G-XXXXXXXXXX",
     type: "text",
+    icon: GoogleTagManagerLogoIcon,
   },
   customPrompt: {
     label: "Custom AI Prompt",
     description: "Provide specific instructions for how the AI should generate your landing page",
     placeholder: "e.g., Make it highly technical with dark mode theme, focus on performance metrics...",
     type: "textarea",
+    icon: Sparkles,
   },
 }
 
@@ -322,9 +468,27 @@ function buildPayload(fd: Partial<FormData>) {
       eventTracking: split(fd.eventTrackingSetup),
     },
     branding: {
-      colorPalette: { raw: fd.brandColorPalette || "" },
+      theme: (fd.pageTheme === "light" || fd.pageTheme === "dark") ? fd.pageTheme : "light",
+      colorPalette: {
+        primary: fd.brandPrimary || "#7269F8",
+        accent: fd.brandAccent || "#22C55E",
+        neutral: fd.brandNeutral || "#E2E8F0",
+        raw:
+          (fd.brandPrimary || fd.brandAccent || fd.brandNeutral)
+            ? `Primary: ${fd.brandPrimary || "#7269F8"}, Accent: ${fd.brandAccent || "#22C55E"}, Neutral: ${fd.brandNeutral || "#E2E8F0"}`
+            : "",
+      },
       fonts: fd.fontStyleGuide || "",
       layoutPreference: fd.pageLayoutPreference || "",
+      sections: (fd.selectedSections && fd.selectedSections.length > 0) ? fd.selectedSections : ["hero", "benefits", "features"],
+      sectionData: {
+        faq: fd.faqData || [],
+        pricing: fd.pricingData || [],
+        stats: fd.statsData || [],
+        team: fd.teamData || [],
+        testimonials: fd.testimonialsData || [],
+        custom: fd.customSections || [],
+      },
     },
     media: {
       videoUrl: fd.videoURL?.trim() ? fd.videoURL : null,
@@ -339,8 +503,12 @@ function buildPayload(fd: Partial<FormData>) {
     assets: {
         // Now already storing public URLs
         logo: fd.logoUpload || null,
-        heroImage: fd.heroImage || null,
-        secondaryImages: fd.secondaryImages || [],
+      heroImage: null,
+      secondaryImages: [],
+      // Optional favicon for browser tab / bookmarks
+      favicon: fd.faviconUpload || null,
+      // Section-level assets keyed by section identifier
+      sectionAssets: fd.sectionAssets || {},
     },
   }
 }
@@ -366,6 +534,7 @@ const DUMMY_DATA_SETS = [
     toneOfVoice: "Technical",
     targetSEOKeywords: "DevOps automation, multi-region deployment, rollback, SLA",
     eventTrackingSetup: "button_click, form_submit, cta_hover",
+    pageTheme: "dark",
     brandColorPalette: "Primary: #0EA5E9, Accent: #8B5CF6, Neutral: #0F172A",
     fontStyleGuide: "Heading: Inter Bold, Body: Manrope Regular",
     pageLayoutPreference: "Single scroll hero",
@@ -396,6 +565,7 @@ const DUMMY_DATA_SETS = [
     toneOfVoice: "Friendly yet professional",
     targetSEOKeywords: "AI analytics, predictive insights, business intelligence, data visualization",
     eventTrackingSetup: "demo_request, video_play, pricing_view",
+    pageTheme: "light",
     brandColorPalette: "Primary: #10B981, Accent: #F59E0B, Neutral: #1F2937",
     fontStyleGuide: "Heading: Poppins SemiBold, Body: Inter Regular",
     pageLayoutPreference: "Two-column layout",
@@ -426,6 +596,7 @@ const DUMMY_DATA_SETS = [
     toneOfVoice: "Energetic and results-focused",
     targetSEOKeywords: "e-commerce personalization, cart recovery, product recommendations, Shopify app",
     eventTrackingSetup: "trial_start, demo_watch, pricing_click",
+    pageTheme: "dark",
     brandColorPalette: "Primary: #EC4899, Accent: #8B5CF6, Neutral: #111827",
     fontStyleGuide: "Heading: Montserrat Bold, Body: Open Sans Regular",
     pageLayoutPreference: "Hero + feature grid",
@@ -2111,8 +2282,7 @@ const DUMMY_DATA_SETS = [
     fontStyleGuide: "Heading: Space Grotesk Bold, Body: Inter Regular",
     pageLayoutPreference: "Hero + Agent timeline + Variant grid",
     logoUpload: null,
-    heroImage: null,
-    secondaryImages: [],
+    faviconUpload: null,
     videoURL: "",
     privacyPolicyURL: "https://caelum.ai/privacy",
     gdprCcpaConsentText: "I agree to receive agentic build updates.",
@@ -2123,17 +2293,54 @@ const DUMMY_DATA_SETS = [
   },
 ]
 
+const OPTIONAL_FIELDS = new Set<string>([
+  "secondaryCTAText",
+  "videoURL",
+  "logoUpload",
+  "faviconUpload",
+  "analyticsIDs",
+  "gtagID",
+  "customPrompt",
+  "privacyPolicyURL",
+  "fontStyleGuide",
+  "brandPrimary",
+  "brandAccent",
+  "brandNeutral",
+  "pageTheme",
+  "eventTrackingSetup",
+])
+
 export function LandingPageForm() {
   const router = useRouter()
   const { setPayload } = usePayload()
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState<Partial<FormData>>({})
+  const [formData, setFormData] = useState<Partial<FormData>>({
+    selectedSections: ["hero", "benefits", "features"],
+    faqData: [],
+    pricingData: [],
+    statsData: [],
+    teamData: [],
+    testimonialsData: [],
+    customSections: [],
+    sectionAssets: {},
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const currentStepData = STEPS.find((s) => s.id === currentStep)!
   const progress = (currentStep / STEPS.length) * 100
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (
+    field: string,
+    value:
+      | string
+      | SectionType[]
+      | FormData["faqData"]
+      | FormData["pricingData"]
+      | FormData["statsData"]
+      | FormData["teamData"]
+      | FormData["testimonialsData"]
+      | FormData["customSections"]
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -2147,7 +2354,7 @@ export function LandingPageForm() {
     }
   }
 
-  // Upload single file or multiple (secondaryImages) to backend to obtain public URLs
+  // Upload single file to backend to obtain public URL
   const handleFileUpload = async (field: string, files: FileList | null) => {
     if (!files || files.length === 0) return
 
@@ -2189,17 +2396,6 @@ export function LandingPageForm() {
       }
     }
 
-    if (field === 'secondaryImages') {
-      const uploaded: string[] = []
-      for (const f of toUpload) {
-        const url = await uploadOne(f)
-        if (url) uploaded.push(url)
-      }
-      setFormData(prev => ({
-        ...prev,
-        secondaryImages: [...(prev.secondaryImages || []), ...uploaded]
-      }))
-    } else {
       const url = await uploadOne(toUpload[0])
       if (!url) {
         setErrors(prev => ({ ...prev, [field]: 'Upload failed' }))
@@ -2209,7 +2405,6 @@ export function LandingPageForm() {
         ...prev,
         [field]: url
       }))
-    }
 
     if (errors[field]) {
       setErrors((prev) => {
@@ -2221,33 +2416,21 @@ export function LandingPageForm() {
   }
 
   const removeFile = (field: string, index?: number) => {
-    if (field === 'secondaryImages' && index !== undefined) {
-      setFormData(prev => ({
-        ...prev,
-        secondaryImages: prev.secondaryImages?.filter((_, i) => i !== index) || []
-      }))
-    } else {
       setFormData(prev => ({
         ...prev,
         [field]: null
       }))
-    }
   }
 
   const validateStep = () => {
     const newErrors: Record<string, string> = {}
     currentStepData.fields.forEach((field) => {
-      if (field === "videoURL" || field === "secondaryCTAText" || field === "heroImage" || field === "logoUpload") {
-        // These are optional
+      // Skip optional fields
+      if (OPTIONAL_FIELDS.has(field)) {
         return
       }
 
       const value = formData[field as keyof FormData]
-
-      if (field === "secondaryImages") {
-        // Optional
-        return
-      }
 
       if (!value || (typeof value === "string" && !value.trim())) {
         newErrors[field] = "This field is required"
@@ -2283,218 +2466,1508 @@ export function LandingPageForm() {
 
   const fillDummyData = () => {
     const randomSet = DUMMY_DATA_SETS[Math.floor(Math.random() * DUMMY_DATA_SETS.length)]
+    // If legacy brandColorPalette exists, parse into new fields
+    const parsed = parsePaletteString((randomSet as any).brandColorPalette)
     setFormData({
       ...randomSet,
+      pageTheme: (randomSet.pageTheme as "light" | "dark") || "light",
+      brandPrimary: (randomSet as any).brandPrimary || parsed.primary,
+      brandAccent: (randomSet as any).brandAccent || parsed.accent,
+      brandNeutral: (randomSet as any).brandNeutral || parsed.neutral,
       logoUpload: null,
-      heroImage: null,
-      secondaryImages: [],
+      faviconUpload: null,
     })
     setErrors({})
   }
 
+  const tabValue = `step-${currentStep}`
+
+  const handleTabChange = (value: string) => {
+    const id = Number(value.replace("step-", ""))
+    if (!Number.isNaN(id) && id <= currentStep) {
+      setCurrentStep(id)
+    }
+  }
+
+  // Helper to identify list fields that should use TagInput
+  const isListField = (fieldName: string): boolean => {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
-      <div className="w-full max-w-2xl">
-        {/* Header */}
-        <div className="mb-8">
+      fieldName.includes("Keywords") ||
+      fieldName.includes("Benefits") ||
+      fieldName.includes("Features") ||
+      fieldName.includes("Triggers") ||
+      fieldName.includes("Objections") ||
+      fieldName.includes("Testimonials") ||
+      fieldName.includes("Indicators") ||
+      fieldName.includes("Setup") ||
+      fieldName === "eventTrackingSetup"
+    )
+  }
+
+  // Convert string to array for TagInput
+  const stringToArray = (str: string | undefined): string[] => {
+    if (!str || !str.trim()) return []
+    return str.split(/[,\n]/).map(s => s.trim()).filter(Boolean)
+  }
+
+  // Convert array back to string for formData
+  const arrayToString = (arr: string[]): string => {
+    return arr.join(", ")
+  }
+
+  // Parse a legacy palette string into primary/accent/neutral (fallbacks if missing)
+  const parsePaletteString = (raw?: string) => {
+    const hexMatches = raw?.match(/#(?:[0-9a-fA-F]{3,8})/g) || []
+    return {
+      primary: hexMatches[0] || "#7269F8",
+      accent: hexMatches[1] || "#22C55E",
+      neutral: hexMatches[2] || "#E2E8F0",
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(114,105,248,0.12),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(114,105,248,0.08),transparent_70%)]" />
+      <div className="relative z-10 mx-auto w-full max-w-[1600px] px-6 py-12 lg:px-16 xl:px-20">
+        <div className="flex flex-col gap-6">
           <Link
             href="/"
-            className="text-sm text-muted-foreground hover:text-accent transition-colors mb-4 inline-flex items-center gap-1"
+            className="inline-flex w-fit items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="h-4 w-4" />
             Back to home
           </Link>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2 font-sans">Create Your Landing Page</h1>
-          <p className="text-muted-foreground">
-            Step {currentStep} of {STEPS.length} — {currentStepData.title}
-          </p>
         </div>
 
-        {/* Progress bar */}
-        <div className="mb-8 h-1 bg-card rounded-full overflow-hidden">
-          <div
-            className="h-full bg-linear-to-r from-accent to-primary transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="mt-12 grid gap-12 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="space-y-8">
+            <section className="rounded-lg border border-border/60 bg-background/80 p-6">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                <span>Progress</span>
+                <span>{Math.round(progress)}%</span>
         </div>
+              <Progress value={progress} className="mt-3 h-2" />
+            </section>
 
-        {/* Form Card */}
-        <div className="bg-card/50 border border-border/50 rounded-2xl p-8 sm:p-10 backdrop-blur-sm relative">
-          {/* Dice button in top right */}
+            <ScrollArea className="h-[420px] rounded-lg border border-border/50 bg-background/60">
+              <div className="p-2">
+                {STEPS.map((step) => {
+                  const disabled = step.id > currentStep
+                  const isActive = step.id === currentStep
+                  const isComplete = step.id < currentStep
+                  return (
           <button
-            onClick={fillDummyData}
-            className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors opacity-30 hover:opacity-100"
+                      key={step.id}
             type="button"
-            title="Fill with random data"
-          >
-            <Dices className="w-5 h-5" />
+                      onClick={() => setCurrentStep(step.id)}
+                      disabled={disabled}
+                      className={cn(
+                        "mb-2 w-full rounded-lg border border-transparent px-3 py-3 text-left text-sm transition-colors last:mb-0",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                        disabled && "cursor-not-allowed opacity-50",
+                        isActive && "border-primary/60 bg-primary/10 text-primary",
+                        isComplete && !isActive && "border-primary/30 bg-primary/5 text-foreground",
+                        !isActive && !isComplete && !disabled && "bg-background/80 text-muted-foreground hover:border-border/70 hover:bg-background"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-border/70 text-xs font-semibold">
+                          {step.id}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">{step.title}</p>
+                          <p className="text-xs text-muted-foreground">{step.description}</p>
+                        </div>
+                      </div>
           </button>
+                  )
+                })}
+              </div>
+            </ScrollArea>
 
-          {/* Step Title */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2 font-sans">{currentStepData.title}</h2>
-            <p className="text-muted-foreground">{currentStepData.description}</p>
+            <Alert className="border-border/60 bg-background/80">
+              <Info className="h-4 w-4" />
+              <AlertTitle className="text-sm font-semibold">Shortcut</AlertTitle>
+              <AlertDescription className="mt-2 space-y-3 text-sm text-muted-foreground">
+                <p>Need a reference point? Load a curated sample brief to explore formatting ideas.</p>
+                <Button
+                  onClick={fillDummyData}
+                  variant="secondary"
+                  className="w-full justify-center gap-2"
+                  type="button"
+                >
+                  <Dices className="h-4 w-4" />
+                  Fill with sample data
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </aside>
+
+          <Tabs value={tabValue} onValueChange={handleTabChange} className="flex flex-col gap-12">
+            <TabsList className="hidden" aria-hidden="true">
+              {STEPS.map((step) => (
+                <TabsTrigger key={step.id} value={`step-${step.id}`} />
+              ))}
+            </TabsList>
+
+            {STEPS.map((step) => (
+              <TabsContent key={step.id} value={`step-${step.id}`} className="space-y-10">
+                <div className="space-y-5">
+                  <Badge variant="outline" className="uppercase tracking-[0.3em] text-xs">
+                    Stage {step.id}
+                  </Badge>
+                  <div>
+                    <h2 className="text-2xl font-semibold leading-tight sm:text-3xl">{step.title}</h2>
+                    <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{step.description}</p>
+                  </div>
           </div>
 
-          {/* Form Fields */}
-          <div className="space-y-6 mb-8">
-            {currentStepData.fields.map((field) => {
+                <Separator />
+
+                <div className={cn("grid gap-8", step.id === 7 ? "grid-cols-1 md:grid-cols-12" : "md:grid-cols-2")}>
+                  {step.fields.map((field) => {
               const config = FIELD_LABELS[field]
               const value = formData[field as keyof FormData]
               const stringValue = typeof value === "string" ? value : ""
               const error = errors[field]
+                    const inputId = `field-${field}`
+                    const isFullWidth =
+                      config.type === "textarea" ||
+                      config.type === "file" ||
+                      field.includes("Description") ||
+                      field.includes("Keywords") ||
+                      field.includes("List") ||
+                      field.includes("Setup") ||
+                      field.includes("Config") ||
+                      field.includes("Prompt")
+                    const isOptional = OPTIONAL_FIELDS.has(field)
+                    const isStep7 = step.id === 7
+                    const spanClass = isStep7
+                      ? field === "pageTheme"
+                        ? "md:col-span-12"
+                        : field === "brandPrimary"
+                        ? "md:col-span-4"
+                        : field === "brandAccent"
+                        ? "md:col-span-4"
+                        : field === "brandNeutral"
+                        ? "md:col-span-4"
+                        : field === "fontStyleGuide"
+                        ? "md:col-span-6"
+                        : field === "pageLayoutPreference"
+                        ? "md:col-span-12"
+                        : field === "logoUpload"
+                        ? "md:col-span-6"
+                        : field === "faviconUpload"
+                        ? "md:col-span-6"
+                        : "md:col-span-6"
+                      : ""
+                    const orderClass = isStep7
+                      ? field === "pageTheme"
+                        ? "order-1"
+                        : field === "brandColorPalette"
+                        ? "order-2"
+                        : field === "fontStyleGuide"
+                        ? "order-3"
+                        : field === "pageLayoutPreference"
+                        ? "order-4"
+                        : field === "logoUpload"
+                        ? "order-5"
+                        : field === "faviconUpload"
+                        ? "order-6"
+                        : ""
+                      : ""
 
-              if (config.type === "file") {
-                if (field === "secondaryImages") {
+              // Step 1: custom layout & styling
+              if (step.id === 1 && field === "productServiceName") {
                   return (
-                    <div key={field}>
-                      <label className="block text-sm font-medium mb-2">{config.label}</label>
-                      {config.description && <p className="text-xs text-muted-foreground mb-3">{config.description}</p>}
+                  <div key={field} className="md:col-span-2">
+                    <div className="rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-5 shadow-[0_0_24px_rgba(114,105,248,0.18)]">
+                      <Label htmlFor={inputId} className="text-sm font-semibold tracking-tight flex items-center gap-2">
+                        {config.icon && (
+                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </span>
+                        )}
+                        <span>
+                          {config.label}
+                          {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                        </span>
+                      </Label>
+                      <Input
+                        id={inputId}
+                        value={stringValue}
+                        onChange={(e) => handleInputChange(field, e.target.value)}
+                        placeholder={config.placeholder}
+                        className={cn(
+                          "mt-3 h-14 rounded-xl border border-primary/60 bg-background/90 text-lg font-semibold tracking-tight placeholder:text-primary/40 shadow-sm",
+                          "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          error && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        aria-invalid={!!error}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                      />
+                      {error && (
+                        <p id={`${inputId}-error`} className="mt-2 text-xs font-medium text-destructive">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
 
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-accent transition-colors bg-background/50 group">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-6 h-6 text-muted-foreground group-hover:text-accent transition-colors mb-2" />
-                          <p className="text-sm text-muted-foreground">Click to upload images</p>
+              if (step.id === 1 && field === "campaignObjective") {
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
                         </div>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={(e) => handleFileUpload(field, e.target.files)}
-                          className="hidden"
-                        />
-                      </label>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            What is this page supposed to achieve in one sentence?
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        "Generate qualified demo requests",
+                        "Drive free trial signups",
+                        "Capture waitlist emails for launch",
+                      ].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => handleInputChange(field, preset)}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs transition-colors",
+                            stringValue === preset
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-muted/40 hover:border-primary/40 hover:bg-muted"
+                          )}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                    <Input
+                      id={inputId}
+                      value={stringValue}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      placeholder={config.placeholder}
+                      className={cn(
+                        "h-11 rounded-lg text-sm",
+                        error && "border-destructive focus-visible:ring-destructive"
+                      )}
+                      aria-invalid={!!error}
+                      aria-describedby={error ? `${inputId}-error` : undefined}
+                    />
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
 
-                      {/* Display uploaded URLs */}
-                      {Array.isArray(value) && value.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {value.map((url: string, idx: number) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border/50"
-                            >
-                              <span className="text-sm text-muted-foreground truncate">{url.split('/').pop()}</span>
-                              <button
-                                onClick={() => removeFile(field, idx)}
-                                className="text-destructive hover:text-destructive/80"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+              if (step.id === 1 && field === "primaryOffer") {
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            What concrete offer will convince visitors to take action?
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-dashed border-muted bg-muted/40 p-3 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground/90">Preview</p>
+                      <p className="mt-1 line-clamp-2 text-[11px]">
+                        {stringValue || "“Start a 14-day free trial — no credit card required.”"}
+                      </p>
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-[11px] font-medium text-foreground">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        This will shape your primary hero CTA and key CTAs across the page.
+                      </div>
+                    </div>
+                    <Input
+                      id={inputId}
+                      value={stringValue}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      placeholder={config.placeholder}
+                      className={cn(
+                        "h-11 rounded-lg text-sm",
+                        error && "border-destructive focus-visible:ring-destructive"
+                      )}
+                      aria-invalid={!!error}
+                      aria-describedby={error ? `${inputId}-error` : undefined}
+                    />
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              // Step 2: Audience & Value
+              if (step.id === 2 && field === "targetAudienceDescription") {
+                return (
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/40 p-4 sm:p-5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-2">
+                          {config.icon && (
+                            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <config.icon className="h-4 w-4" />
                             </div>
+                          )}
+                          <div>
+                            <Label htmlFor={inputId} className="text-sm font-semibold leading-none">
+                              {config.label}
+                              {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                            </Label>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Describe who this page is for in plain language. We&apos;ll use this to tune tone, proof, and sections.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl bg-background/80 px-3 py-2 text-[11px] text-muted-foreground sm:max-w-xs">
+                          <p className="font-medium text-foreground/90">Persona sketch</p>
+                          <p className="mt-1 line-clamp-3">
+                            e.g. &quot;Growth-minded SaaS founders in North America managing 5–20 person teams, comfortable with trying
+                            new tools if the ROI is clear.&quot;
+                          </p>
+                        </div>
+                      </div>
+                      <Textarea
+                        id={inputId}
+                        placeholder={config.placeholder}
+                        value={stringValue}
+                        onChange={(e) => handleInputChange(field, e.target.value)}
+                        className={cn(
+                          "min-h-[140px] resize-y rounded-xl border-border/70 bg-background/80 text-sm",
+                          error && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        aria-invalid={!!error}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                      />
+                      {error && (
+                        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (step.id === 2 && field === "buyerPersonaKeywords") {
+                const tags = stringToArray(stringValue)
+                const popular = ["scaling", "automation", "self-serve", "enterprise", "PLG", "remote teams"]
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Short phrases that describe your buyer. We&apos;ll use these as semantic anchors for the page.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                        <TagInput
+                          value={tags}
+                          onChange={(newTags) => handleInputChange(field, arrayToString(newTags))}
+                          placeholder={config.placeholder || "Add persona keywords..."}
+                          disabled={false}
+                          maxTags={8}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 text-[11px]">
+                        {popular.map((kw) => (
+                          <button
+                            key={kw}
+                            type="button"
+                            onClick={() =>
+                              handleInputChange(
+                                field,
+                                arrayToString(tags.includes(kw) ? tags : [...tags, kw])
+                              )
+                            }
+                            className={cn(
+                              "rounded-full border px-2.5 py-0.5 transition-colors",
+                              tags.includes(kw)
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:bg-muted"
+                            )}
+                          >
+                            {kw}
+                          </button>
+                        ))}
+                      </div>
+                      {error && (
+                        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (step.id === 2 && field === "uniqueValueProposition") {
+                return (
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 sm:p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-2">
+                          {config.icon && (
+                            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <config.icon className="h-4 w-4" />
+                            </div>
+                          )}
+                          <div>
+                            <Label htmlFor={inputId} className="text-sm font-semibold leading-none">
+                              {config.label}
+                              {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                            </Label>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Sum up why you win vs alternatives. This drives your hero headline and key proof.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground sm:max-w-xs">
+                          <p className="font-medium text-foreground/90">Formula</p>
+                          <p className="mt-1">
+                            For{" "}
+                            <span className="font-semibold">
+                              [your ideal audience]
+                            </span>{" "}
+                            who want{" "}
+                            <span className="font-semibold">
+                              [outcome]
+                            </span>
+                            , we provide{" "}
+                            <span className="font-semibold">
+                              [solution]
+                            </span>{" "}
+                            that{" "}
+                            <span className="font-semibold">
+                              [differentiator]
+                            </span>
+                            .
+                          </p>
+                        </div>
+                      </div>
+                      <Textarea
+                        id={inputId}
+                        placeholder={config.placeholder}
+                        value={stringValue}
+                        onChange={(e) => handleInputChange(field, e.target.value)}
+                        className={cn(
+                          "min-h-[130px] resize-y rounded-xl border-border/70 text-sm",
+                          error && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        aria-invalid={!!error}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                      />
+                      {error && (
+                        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              // Step 3: Benefits & Features
+              if (step.id === 3 && field === "topBenefits") {
+                const tags = stringToArray(stringValue)
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Think outcomes, not features. We&apos;ll turn these into scannable bullets.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {tags.length}/5
+                      </span>
+                    </div>
+                    <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                      <TagInput
+                        value={tags}
+                        onChange={(newTags) => handleInputChange(field, arrayToString(newTags))}
+                        placeholder={config.placeholder || "e.g., Launch campaigns 3x faster"}
+                        disabled={false}
+                        maxTags={5}
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Aim for 3–5 crisp benefits. We&apos;ll prioritize these in your hero and benefits section.
+                      </p>
+                    </div>
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              if (step.id === 3 && field === "featureList") {
+                const tags = stringToArray(stringValue)
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            List the core capabilities. We&apos;ll cluster and format them into a clean feature grid.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                      <TagInput
+                        value={tags}
+                        onChange={(newTags) => handleInputChange(field, arrayToString(newTags))}
+                        placeholder={config.placeholder || "e.g., Automated reporting"}
+                        disabled={false}
+                      />
+                      <div className="rounded-lg border border-dashed border-muted bg-muted/40 p-3 text-[11px] text-muted-foreground">
+                        <p className="font-medium text-foreground/90 mb-1">Feature block preview hint</p>
+                        <p className="line-clamp-2">
+                          We&apos;ll combine your benefits &amp; features into 3–4 themed blocks with supporting copy and icons.
+                        </p>
+                      </div>
+                    </div>
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              if (step.id === 3 && field === "emotionalTriggers") {
+                return (
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Fears, frustrations, and aspirations your messaging should tap into.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-xl border border-muted bg-muted/40 p-3 text-[11px] text-muted-foreground">
+                        <p className="font-medium text-foreground/90 mb-1">Prompt ideas</p>
+                        <ul className="space-y-1 list-disc pl-4">
+                          <li>What are they worried will happen if they don&apos;t solve this?</li>
+                          <li>What &quot;aha&quot; moment do you want them to feel?</li>
+                          <li>What outcome would feel like a win 90 days from now?</li>
+                        </ul>
+                      </div>
+                      <Textarea
+                        id={inputId}
+                        placeholder={config.placeholder}
+                        value={stringValue}
+                        onChange={(e) => handleInputChange(field, e.target.value)}
+                        className={cn(
+                          "min-h-[130px] resize-y rounded-xl border-border/70 text-sm",
+                          error && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        aria-invalid={!!error}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                      />
+                    </div>
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              // Step 4: Trust & Credibility
+              if (step.id === 4 && field === "objections") {
+                const tags = stringToArray(stringValue)
+                return (
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 sm:p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-2">
+                          {config.icon && (
+                            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <config.icon className="h-4 w-4" />
+                            </div>
+                          )}
+                          <div>
+                            <Label htmlFor={inputId} className="text-sm font-semibold leading-none">
+                              {config.label}
+                              {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                            </Label>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              List the reasons prospects hesitate so we can preempt them with copy, FAQs, and proof.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground sm:max-w-xs">
+                          <p className="font-medium text-foreground/90 mb-1">Common buckets</p>
+                          <ul className="space-y-1 list-disc pl-4">
+                            <li>Price / ROI doubts</li>
+                            <li>Implementation complexity</li>
+                            <li>Trust / security / proof</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                        <TagInput
+                          value={tags}
+                          onChange={(newTags) => handleInputChange(field, arrayToString(newTags))}
+                          placeholder={config.placeholder || "e.g., Too expensive, Takes too long to set up"}
+                          disabled={false}
+                        />
+                        <div className="flex flex-wrap gap-1.5 text-[11px]">
+                          {["Too expensive", "Takes too long to implement", "Risky to switch"].map((o) => (
+                              <button
+                              key={o}
+                              type="button"
+                              onClick={() =>
+                                handleInputChange(
+                                  field,
+                                  arrayToString(tags.includes(o) ? tags : [...tags, o])
+                                )
+                              }
+                              className={cn(
+                                "rounded-full border px-2.5 py-0.5 transition-colors",
+                                tags.includes(o)
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:bg-muted"
+                              )}
+                            >
+                              {o}
+                              </button>
+                          ))}
+                            </div>
+                      </div>
+                      {error && (
+                        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (step.id === 4 && field === "trustIndicators") {
+                const tags = stringToArray(stringValue)
+                return (
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/40 p-4 sm:p-5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-2">
+                          {config.icon && (
+                            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <config.icon className="h-4 w-4" />
+                            </div>
+                          )}
+                          <div>
+                            <Label htmlFor={inputId} className="text-sm font-semibold leading-none">
+                              {config.label}
+                              {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                            </Label>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Quick facts, badges, and logos we can surface around your hero and proof sections.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-dashed border-muted bg-background/80 px-3 py-2 text-[11px] text-muted-foreground sm:max-w-xs">
+                          <p className="font-medium text-foreground/90 mb-1">Hero strip preview</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {(tags.length ? tags : ["10K+ customers", "SOC 2 Type II", "4.9/5 G2 rating"])
+                              .slice(0, 3)
+                              .map((t, i) => (
+                                <span
+                                  key={`${t}-${i}`}
+                                  className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground"
+                                >
+                                  {t}
+                                </span>
                           ))}
                         </div>
+                        </div>
+                      </div>
+                      <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                        <TagInput
+                          value={tags}
+                          onChange={(newTags) => handleInputChange(field, arrayToString(newTags))}
+                          placeholder={config.placeholder || "e.g., 10K+ customers, SOC 2 Type II"}
+                          disabled={false}
+                        />
+                      </div>
+                      {error && (
+                        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                          {error}
+                        </p>
                       )}
+                    </div>
                     </div>
                   )
                 }
 
+              // Step 5: Conversions
+              if (step.id === 5 && field === "primaryCTAText") {
                 return (
-                  <div key={field}>
-                    <label className="block text-sm font-medium mb-2">{config.label}</label>
-                    {config.description && <p className="text-xs text-muted-foreground mb-3">{config.description}</p>}
-
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-accent transition-colors bg-background/50 group">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-6 h-6 text-muted-foreground group-hover:text-accent transition-colors mb-2" />
-                        <p className="text-sm text-muted-foreground">Click to upload</p>
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-4 sm:p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2">
+                          {config.icon && (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
+                              <config.icon className="h-4 w-4" />
+                            </div>
+                          )}
+                          <div>
+                            <Label htmlFor={inputId} className="text-sm font-semibold leading-none">
+                              {config.label}
+                              {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                            </Label>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              This will power your main hero button and primary CTAs across the page.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="hidden text-right text-[11px] text-muted-foreground sm:block">
+                          <p className="font-medium text-foreground/90">Best practice</p>
+                          <p className="mt-1">
+                            Use action verbs + outcome (&quot;Start free trial&quot;, &quot;Get a demo&quot;, &quot;Generate my page&quot;).
+                          </p>
+                        </div>
                       </div>
+                      <div className="rounded-xl bg-background/90 p-3 text-center">
+                        <button
+                          type="button"
+                          className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-6 text-xs font-semibold text-white shadow-sm"
+                        >
+                          {stringValue || "Start free trial"}
+                        </button>
+                      </div>
+                      <Input
+                        id={inputId}
+                        value={stringValue}
+                        onChange={(e) => handleInputChange(field, e.target.value)}
+                        placeholder={config.placeholder}
+                        className={cn(
+                          "h-11 rounded-lg text-sm",
+                          error && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        aria-invalid={!!error}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                      />
+                      {error && (
+                        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (step.id === 5 && field === "secondaryCTAText") {
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                      </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            A softer option for visitors who aren&apos;t ready for the primary CTA yet.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-dashed border-muted bg-muted/40 p-3 text-center">
+                      <button
+                        type="button"
+                        className="inline-flex h-9 items-center justify-center rounded-full border border-border bg-background px-5 text-[11px] font-medium text-muted-foreground"
+                      >
+                        {stringValue || "See pricing"}
+                      </button>
+                    </div>
+                    <Input
+                      id={inputId}
+                      value={stringValue}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      placeholder={config.placeholder}
+                      className={cn(
+                        "h-11 rounded-lg text-sm",
+                        error && "border-destructive focus-visible:ring-destructive"
+                      )}
+                      aria-invalid={!!error}
+                      aria-describedby={error ? `${inputId}-error` : undefined}
+                    />
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              if (step.id === 5 && field === "primaryConversionKPI") {
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            What are you optimising for? We’ll tune layout and copy around this metric.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <Input
+                      id={inputId}
+                      value={stringValue}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      placeholder={config.placeholder}
+                      className={cn(
+                        "h-11 rounded-lg text-sm",
+                        error && "border-destructive focus-visible:ring-destructive"
+                      )}
+                      aria-invalid={!!error}
+                      aria-describedby={error ? `${inputId}-error` : undefined}
+                    />
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              // Step 6: Messaging & SEO
+              if (step.id === 6 && field === "toneOfVoice") {
+                const presets = ["Friendly", "Expert", "Playful", "Bold", "Technical"]
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Pick a primary tone, then refine it in your own words.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {presets.map((tone) => (
+                        <button
+                          key={tone}
+                          type="button"
+                          onClick={() => handleInputChange(field, tone)}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs transition-colors",
+                            stringValue === tone
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:bg-muted"
+                          )}
+                        >
+                          {tone}
+                        </button>
+                      ))}
+                    </div>
+                    <Input
+                      id={inputId}
+                      value={stringValue}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      placeholder={config.placeholder}
+                      className={cn(
+                        "h-11 rounded-lg text-sm",
+                        error && "border-destructive focus-visible:ring-destructive"
+                      )}
+                      aria-invalid={!!error}
+                      aria-describedby={error ? `${inputId}-error` : undefined}
+                    />
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              if (step.id === 6 && field === "targetSEOKeywords") {
+                const tags = stringToArray(stringValue)
+                return (
+                  <div key={field} className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {config.icon && (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <config.icon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div>
+                          <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                            {config.label}
+                            {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                          </Label>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            We’ll weave these into headings, body copy, and metadata (without keyword stuffing).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                      <TagInput
+                        value={tags}
+                        onChange={(newTags) => handleInputChange(field, arrayToString(newTags))}
+                        placeholder={config.placeholder || "e.g., AI landing page builder"}
+                        disabled={false}
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Mix 2–4 primary keywords and a few long-tails. We’ll handle distribution.
+                      </p>
+                    </div>
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )
+              }
+
+              if (step.id === 6 && field === "eventTrackingSetup") {
+                const tags = stringToArray(stringValue)
+                return (
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/40 p-4 sm:p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-2">
+                          {config.icon && (
+                            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <config.icon className="h-4 w-4" />
+                            </div>
+                          )}
+                          <div>
+                            <Label htmlFor={inputId} className="text-sm font-semibold leading-none">
+                              {config.label}
+                              {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                            </Label>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Which events should we highlight or suggest (e.g., GTM/GA4 tracking, key clicks, form submits)?
+                            </p>
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-background/80 px-3 py-2 text-[11px] text-muted-foreground sm:max-w-xs">
+                          <p className="font-medium text-foreground/90 mb-1">Example events</p>
+                          <p>Hero CTA click, pricing CTA click, form submit, FAQ accordion open, video play.</p>
+                        </div>
+                      </div>
+                      <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                        <TagInput
+                          value={tags}
+                          onChange={(newTags) => handleInputChange(field, arrayToString(newTags))}
+                          placeholder={config.placeholder || "e.g., Hero CTA click, Form submit"}
+                          disabled={false}
+                        />
+                      </div>
+                      {error && (
+                        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (config.type === "file") {
+                  return (
+                        <div
+                          key={field}
+                          className={cn("space-y-3", isFullWidth && !isStep7 && "md:col-span-2", spanClass, orderClass)}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1">
+                              {config.icon && (
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                  <config.icon className="h-4 w-4" />
+                        </div>
+                              )}
+                              <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                                {config.label}
+                                {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                              </Label>
+                            </div>
+                            {isOptional && (
+                              <Badge variant="outline" className="text-xs font-normal">
+                                Optional
+                              </Badge>
+                            )}
+                          </div>
+                          {config.description && (
+                            <p className="text-xs text-muted-foreground">{config.description}</p>
+                          )}
+                          <label
+                            htmlFor={inputId}
+                            className={cn(
+                              "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-input bg-background px-6 py-10 text-center text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-accent/50",
+                              error && "border-destructive"
+                            )}
+                          >
+                            <Upload className="h-5 w-5 text-primary" />
+                            <span className="font-medium">Drop or browse files</span>
+                            <span className="text-xs text-muted-foreground">PNG, SVG, JPG up to 5MB</span>
+                          </label>
                       <input
+                            id={inputId}
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleFileUpload(field, e.target.files)}
                         className="hidden"
-                      />
-                    </label>
-
-                    {/* Display uploaded URL */}
-                    {typeof value === 'string' && value.trim().length > 0 && (
-                      <div className="mt-3 flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border/50">
-                        <span className="text-sm text-muted-foreground truncate">{value.split('/').pop()}</span>
+                            aria-invalid={!!error}
+                            aria-describedby={error ? `${inputId}-error` : undefined}
+                        />
+                          {typeof value === "string" && value.trim().length > 0 && (
+                            <div className="mt-3 flex items-center justify-between rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                              <span className="truncate text-foreground">{value.split('/').pop()}</span>
                         <button
                           onClick={() => removeFile(field)}
-                          className="text-destructive hover:text-destructive/80"
+                                className="text-destructive transition-colors hover:text-destructive/80"
+                                type="button"
+                                aria-label={`Remove ${value.split('/').pop()}`}
                         >
-                          <X className="w-4 h-4" />
+                                <X className="h-4 w-4" />
                         </button>
                       </div>
                     )}
-                    {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+                          {error && (
+                            <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                              {error}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                    // Check if this is a list field that should use TagInput
+                    const useTagInput = isListField(field)
+                    const tagArrayValue = useTagInput ? stringToArray(stringValue) : []
+
+                    // Handle theme selector
+                    if (config.type === "theme") {
+                      const themeValue = (value as "light" | "dark" | "") || ""
+                      return (
+                        <div
+                          key={field}
+                          className={cn("space-y-3", isFullWidth && !isStep7 && "md:col-span-2", spanClass, orderClass)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {config.icon && (
+                              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                <config.icon className="h-4 w-4" />
+                      </div>
+                            )}
+                            <div className="flex-1">
+                              <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                                {config.label}
+                                {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                              </Label>
+                            </div>
+                            {isOptional && (
+                              <Badge variant="outline" className="text-xs font-normal">
+                                Optional
+                              </Badge>
+                            )}
+                          </div>
+                          {config.description && (
+                            <p className="text-xs text-muted-foreground">{config.description}</p>
+                          )}
+                          <ThemeSelector
+                            value={themeValue}
+                            onChange={(val) => handleInputChange(field, val)}
+                          />
+                          {error && (
+                            <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                              {error}
+                            </p>
+                          )}
+                  </div>
+                )
+              }
+
+              // Handle section selector
+              if (config.type === "sections") {
+                const sectionsValue = (value as SectionType[]) || ["hero", "benefits", "features"]
+              return (
+                  <div
+                    key={field}
+                    className={cn("space-y-3 w-full", "md:col-span-2 lg:col-span-2", spanClass, orderClass)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {config.icon && (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <config.icon className="h-4 w-4" />
+                      </div>
+                    )}
+                      <div className="flex-1">
+                        <Label htmlFor={inputId} className="text-sm font-medium leading-none">
+                          {config.label}
+                          {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                        </Label>
+                      </div>
+                      {isOptional && (
+                        <Badge variant="outline" className="text-xs font-normal">
+                          Optional
+                        </Badge>
+                      )}
+                    </div>
+                    {config.description && (
+                      <p className="text-xs text-muted-foreground">{config.description}</p>
+                    )}
+                    <SectionSelector
+                      selectedSections={sectionsValue}
+                      onChange={(sections) => handleInputChange(field, sections)}
+                      onFAQDataChange={(data) => handleInputChange("faqData", data as any)}
+                      onPricingDataChange={(data) => handleInputChange("pricingData", data as any)}
+                      onStatsDataChange={(data) => handleInputChange("statsData", data as any)}
+                      onTeamDataChange={(data) => handleInputChange("teamData", data as any)}
+                      onTestimonialsDataChange={(data) => handleInputChange("testimonialsData", data as any)}
+                      onCustomSectionsChange={(sections) => handleInputChange("customSections", sections as any)}
+                      onSectionAssetsChange={(assets) => handleInputChange("sectionAssets", assets as any)}
+                      faqData={formData.faqData || []}
+                      pricingData={formData.pricingData || []}
+                      statsData={formData.statsData || []}
+                      teamData={formData.teamData || []}
+                      testimonialsData={formData.testimonialsData || []}
+                      customSections={formData.customSections || []}
+                      sectionAssets={formData.sectionAssets || {}}
+                      benefitsList={stringToArray(formData.topBenefits)}
+                      featuresList={stringToArray(formData.featureList)}
+                    />
+                    {error && (
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
                   </div>
                 )
               }
 
               return (
-                <div key={field}>
-                  <label className="block text-sm font-medium mb-2">{config.label}</label>
-                  {config.description && <p className="text-xs text-muted-foreground mb-2">{config.description}</p>}
-                  {config.type === "textarea" ? (
+                      <div
+                        key={field}
+                        className={cn("space-y-3", isFullWidth && !isStep7 && "md:col-span-2", spanClass, orderClass)}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1">
+                            {config.icon && (
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                <config.icon className="h-4 w-4" />
+                              </div>
+                            )}
+                            <Label htmlFor={inputId} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {config.label}
+                              {!isOptional && <span className="ml-1 text-destructive">*</span>}
+                            </Label>
+                          </div>
+                          {isOptional && (
+                            <Badge variant="outline" className="text-xs font-normal">
+                              Optional
+                            </Badge>
+                          )}
+                        </div>
+                        {config.description && (
+                          <p className="text-xs text-muted-foreground">{config.description}</p>
+                        )}
+                        {useTagInput ? (
+                          <div className={cn("space-y-2", error && "[&>div]:border-destructive")}>
+                            <TagInput
+                              value={tagArrayValue}
+                              onChange={(tags) => handleInputChange(field, arrayToString(tags))}
+                              placeholder={config.placeholder || "Add items..."}
+                              disabled={false}
+                              maxTags={field.includes("Benefits") ? 5 : undefined}
+                            />
+                          </div>
+                        ) : config.type === "textarea" ? (
                     <Textarea
+                            id={inputId}
                       placeholder={config.placeholder}
                       value={stringValue}
                       onChange={(e) => handleInputChange(field, e.target.value)}
-                      className={`min-h-24 rounded-lg bg-background/50 border ${error ? "border-destructive" : "border-border/50"} focus:border-accent transition-colors`}
+                            className={cn(
+                              "min-h-[120px] resize-y",
+                              error && "border-destructive focus-visible:ring-destructive"
+                            )}
+                            aria-invalid={!!error}
+                            aria-describedby={error ? `${inputId}-error` : undefined}
                     />
+                        ) : config.type === "color" ? (
+                          <div className="w-full max-w-[170px] space-y-2">
+                            <div
+                              className="h-7 w-full rounded-md border border-border/70 shadow-[0_0_0_1px_rgba(0,0,0,0.02)]"
+                              style={{
+                                backgroundColor:
+                                  /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(stringValue || "")
+                                    ? stringValue
+                                    : field === "brandAccent"
+                                    ? "#22C55E"
+                                    : field === "brandNeutral"
+                                    ? "#E2E8F0"
+                                    : "#7269F8",
+                              }}
+                            />
+                            <div className="flex items-center justify-between gap-2">
+                              <Input
+                                id={inputId}
+                                type="text"
+                                placeholder={config.placeholder}
+                                value={stringValue}
+                                onChange={(e) => handleInputChange(field, e.target.value)}
+                                className={cn(
+                                  "h-8 flex-1 font-mono text-[11px] uppercase",
+                                  error && "border-destructive focus-visible:ring-destructive"
+                                )}
+                                aria-invalid={!!error}
+                                aria-describedby={error ? `${inputId}-error` : undefined}
+                              />
+                              <input
+                                type="color"
+                                id={`${inputId}-picker`}
+                                value={
+                                  /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(stringValue || "")
+                                    ? stringValue
+                                    : field === "brandAccent"
+                                    ? "#22C55E"
+                                    : field === "brandNeutral"
+                                    ? "#E2E8F0"
+                                    : "#7269F8"
+                                }
+                                onChange={(e) => handleInputChange(field, e.target.value)}
+                                className="h-8 w-8 cursor-pointer rounded-md border border-input bg-background p-0.5"
+                                aria-label={`${config.label} color`}
+                              />
+                            </div>
+                          </div>
                   ) : (
                     <Input
+                            id={inputId}
+                            type="text"
                       placeholder={config.placeholder}
                       value={stringValue}
                       onChange={(e) => handleInputChange(field, e.target.value)}
-                      className={`rounded-lg bg-background/50 border ${error ? "border-destructive" : "border-border/50"} focus:border-accent transition-colors`}
-                    />
-                  )}
-                  {error && <p className="text-sm text-destructive mt-1">{error}</p>}
+                            className={cn(
+                              error && "border-destructive focus-visible:ring-destructive"
+                            )}
+                            aria-invalid={!!error}
+                            aria-describedby={error ? `${inputId}-error` : undefined}
+                          />
+                        )}
+
+                        {/* Small inline previews for key business fields */}
+                        {field === "primaryOffer" && (
+                          <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-accent/60 px-3 py-1 text-[11px] text-accent-foreground">
+                            <Sparkles className="h-3 w-3" />
+                            <span>{stringValue || "Your main promotional offer will appear like this."}</span>
+                          </div>
+                        )}
+
+                        {field === "primaryCTAText" && (
+                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="text-[11px] uppercase tracking-[0.16em]">Preview</span>
+                            <button
+                              type="button"
+                              className="inline-flex items-center rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-sm"
+                            >
+                              {stringValue || "Get Started"}
+                              <ChevronRight className="ml-1 h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+
+                        {field === "primaryConversionKPI" && (
+                          <div className="mt-2 inline-flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+                            <div className="flex flex-col">
+                              <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Goal</span>
+                              <span className="text-sm font-semibold text-foreground">
+                                {stringValue || "e.g., 5% sign-up rate"}
+                              </span>
+                            </div>
+                            <div className="ml-auto flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                              <TrendingUp className="h-3 w-3" />
+                              <span>Tracked</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {error && (
+                          <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+                            {error}
+                          </p>
+                        )}
                 </div>
               )
             })}
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-4">
+          {step.id === 7 && (
+            <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span className="uppercase tracking-[0.16em]">Palette preview</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-md border border-border/60" style={{ backgroundColor: (formData.brandPrimary as string) || "#7269F8", width: 16, height: 16 }} />
+                  <span className="text-[11px]">Primary</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-md border border-border/60" style={{ backgroundColor: (formData.brandAccent as string) || "#22C55E", width: 16, height: 16 }} />
+                  <span className="text-[11px]">Accent</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-md border border-border/60" style={{ backgroundColor: (formData.brandNeutral as string) || "#E2E8F0", width: 16, height: 16 }} />
+                  <span className="text-[11px]">Neutral</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+                <Separator />
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
             <Button
               onClick={handlePrev}
               disabled={currentStep === 1}
               variant="outline"
-              className="flex-1 rounded-lg border-border hover:border-accent hover:bg-card/50 disabled:opacity-50 disabled:cursor-not-allowed bg-transparent"
+                    className="h-11 flex-1 rounded-xl border-border text-foreground transition-colors hover:border-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ChevronLeft className="w-4 h-4 mr-2" />
+                    <ChevronLeft className="mr-2 h-4 w-4" />
               Previous
             </Button>
-
-            {currentStep === STEPS.length ? (
+                  {step.id === STEPS.length ? (
               <Button
                 onClick={handleSubmit}
-                className="flex-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all"
+                      className="h-11 flex-1 rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-[1px] hover:bg-primary/90"
               >
-                <CheckCircle2 className="w-4 h-4 mr-2" />
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
                 Generate Landing Page
               </Button>
             ) : (
               <Button
                 onClick={handleNext}
-                className="flex-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all"
+                      className="h-11 flex-1 rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-[1px] hover:bg-primary/90"
               >
                 Next
-                <ChevronRight className="w-4 h-4 ml-2" />
+                      <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             )}
           </div>
-
-          {/* Step indicators */}
-          <div className="mt-8 flex justify-between items-center">
-            <div className="flex gap-2">
-              {STEPS.map((step) => (
-                <div
-                  key={step.id}
-                  className={`h-1.5 rounded-full transition-all ${
-                    step.id <= currentStep ? "bg-primary w-6" : "bg-border w-2"
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {currentStep}/{STEPS.length}
-            </span>
-          </div>
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
       </div>
     </div>

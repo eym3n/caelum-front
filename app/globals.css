@@ -16,9 +16,10 @@
   --primary-foreground: #ffffff;
   /* Subtle surfaces */
   --secondary: #f5f5ff;
-  --secondary-foreground: #1f1f1f;
-  --muted: #6b7280;
-  --muted-foreground: #4b5563;
+  --secondary-foreground: #111827;
+  /* Muted backgrounds and text in light mode should stay bright and readable, not dull gray */
+  --muted: #f3f4ff;
+  --muted-foreground: #4b4f6b;
   --accent: #ecebff;
   --accent-foreground: #111827;
   --destructive: #b91c1c;
