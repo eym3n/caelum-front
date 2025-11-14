@@ -31,8 +31,12 @@ export default function BuilderPage() {
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
   const [isFollowUpStreaming, setIsFollowUpStreaming] = useState(false)
   const [followUpToolText, setFollowUpToolText] = useState<string | null>(null)
-  // Manual refresh counter (no auto reloads)
+  // Manual refresh counter (also used for safe, single auto-refresh when build is done)
   const [previewRefresh, setPreviewRefresh] = useState(0)
+  // Tracks whether the preview environment has successfully reached "ready" at least once
+  const [previewReady, setPreviewReady] = useState(false)
+  // Ensure we only auto-refresh once per builder session
+  const [autoRefreshedSessionId, setAutoRefreshedSessionId] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -127,6 +131,31 @@ export default function BuilderPage() {
       m.node !== 'intake_component'
     )
   }, [messages])
+
+  // Reset preview-ready metadata when a new session starts
+  useEffect(() => {
+    setPreviewReady(false)
+    setAutoRefreshedSessionId(null)
+  }, [sessionId])
+
+  // Auto-refresh the live preview exactly once per session when the backend signals completion.
+  // This waits until the preview environment has successfully booted at least once to avoid
+  // interrupting the initial dependency installation / dev-server startup.
+  useEffect(() => {
+    if (!previewReady) return
+    if (status !== 'completed') return
+    if (autoRefreshedSessionId === sessionId) return
+
+    console.log('[builder] Auto-refreshing preview on done signal', {
+      sessionId,
+      status,
+      hasFirstStreamedEvent,
+      previewReady,
+    })
+
+    setPreviewRefresh((r) => r + 1)
+    setAutoRefreshedSessionId(sessionId)
+  }, [status, previewReady, autoRefreshedSessionId, sessionId])
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
@@ -227,6 +256,11 @@ export default function BuilderPage() {
               sessionId={sessionId}
               enabled={hasFirstStreamedEvent}
               refreshToken={previewRefresh}
+              onFirstReady={() => {
+                // Mark the preview as safely booted; subsequent "done" signals can trigger
+                // a controlled auto-refresh without risking install/start races.
+                setPreviewReady(true)
+              }}
             />
             {/* Bottom-right toast for latest tool action */}
             {toolStatus?.shouldRender && (

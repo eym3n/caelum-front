@@ -17,6 +17,12 @@ interface LivePreviewProps {
   sessionId: string;
   enabled: boolean; // when false, defer boot & tear down
   refreshToken?: number; // manual refresh trigger only (no auto reload)
+  /**
+   * Optional callback that fires the first time the dev server reports "server-ready".
+   * Used by the parent to safely trigger actions (like auto-refresh) only after
+   * the preview environment has successfully booted at least once.
+   */
+  onFirstReady?: () => void;
 }
 
 /**
@@ -46,7 +52,7 @@ function parseToFileSystemTree(obj: any): FileSystemTree {
 // Global WebContainer instance storage to survive hot reloads and component remounts
 let globalWebContainerInstance: WebContainer | null = null;
 
-export default function LivePreview({ sessionId, enabled, refreshToken }: LivePreviewProps) {
+export default function LivePreview({ sessionId, enabled, refreshToken, onFirstReady }: LivePreviewProps) {
   const wcRef = useRef<WebContainer | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -67,6 +73,8 @@ export default function LivePreview({ sessionId, enabled, refreshToken }: LivePr
   const lastRefreshTokenRef = useRef(0);
   // Track if refresh is in progress
   const refreshingRef = useRef(false);
+  // Track whether we've already notified the parent that the dev server is ready
+  const hasNotifiedFirstReadyRef = useRef(false);
   // Store functions in refs to avoid dependency issues
   const fetchFilesRef = useRef<typeof fetchFiles | null>(null);
   const ensureBootRef = useRef<typeof ensureBoot | null>(null);
@@ -385,6 +393,15 @@ export default function LivePreview({ sessionId, enabled, refreshToken }: LivePr
         // Clear reloading banner if we were in a hot reload cycle
         setIsReloading(false);
         appendLog(`✓ Dev server ready at ${url} (port ${port})`);
+        // Notify parent exactly once that the preview environment is ready
+        if (!hasNotifiedFirstReadyRef.current && onFirstReady) {
+          hasNotifiedFirstReadyRef.current = true;
+          try {
+            onFirstReady();
+          } catch (e) {
+            console.error("[LivePreview] onFirstReady callback error", e);
+          }
+        }
       });
 
       // Start dev server with environment variables
@@ -538,6 +555,15 @@ export default function LivePreview({ sessionId, enabled, refreshToken }: LivePr
           setIsReloading(false);
           refreshingRef.current = false;
           appendLog(`✓ Dev server ready at ${url} (port ${port}) after refresh`);
+          // If this is the first time we've reached ready, notify parent
+          if (!hasNotifiedFirstReadyRef.current && onFirstReady) {
+            hasNotifiedFirstReadyRef.current = true;
+            try {
+              onFirstReady();
+            } catch (e) {
+              console.error("[LivePreview] onFirstReady callback error (refresh)", e);
+            }
+          }
         });
         
         setStatus("starting");

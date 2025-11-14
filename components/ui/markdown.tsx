@@ -12,7 +12,20 @@ interface MarkdownProps {
 }
 
 const components: Components = {
-  p: ({ children }) => <p className="mb-1 last:mb-0 leading-normal">{children}</p>,
+  p: ({ children }) => {
+    // Avoid invalid HTML like <p><pre>...</pre></p>, which causes hydration warnings.
+    // If a paragraph would directly contain any block-level <pre>, just render the
+    // children without the wrapping <p>.
+    const hasBlockPre = React.Children.toArray(children).some(
+      (child) => React.isValidElement(child) && child.type === 'pre'
+    )
+
+    if (hasBlockPre) {
+      return <>{children}</>
+    }
+
+    return <p className="mb-1 last:mb-0 leading-normal">{children}</p>
+  },
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
   code: (props) => {
