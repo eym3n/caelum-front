@@ -480,7 +480,13 @@ function buildPayload(fd: Partial<FormData>) {
       },
       fonts: fd.fontStyleGuide || "",
       layoutPreference: fd.pageLayoutPreference || "",
-      sections: (fd.selectedSections && fd.selectedSections.length > 0) ? fd.selectedSections : ["hero", "benefits", "features"],
+      sections: (() => {
+        const core = (fd.selectedSections && fd.selectedSections.length > 0)
+          ? fd.selectedSections
+          : ["hero", "benefits", "features"]
+        const custom = (fd.customSections || []).map((cs) => `custom:${cs.id}`)
+        return [...core, ...custom]
+      })(),
       sectionData: {
         faq: fd.faqData || [],
         pricing: fd.pricingData || [],
