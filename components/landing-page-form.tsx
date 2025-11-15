@@ -145,6 +145,15 @@ interface FormData {
   customPrompt: string
 }
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
 const STEPS = [
   {
     id: 1,
@@ -2331,6 +2340,10 @@ export function LandingPageForm() {
     sectionAssets: {},
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [dummyOrder, setDummyOrder] = useState<number[]>(() =>
+    shuffleArray(Array.from({ length: DUMMY_DATA_SETS.length }, (_, i) => i))
+  )
+  const [dummyIndex, setDummyIndex] = useState(0)
 
   const currentStepData = STEPS.find((s) => s.id === currentStep)!
   const progress = (currentStep / STEPS.length) * 100
@@ -2471,7 +2484,19 @@ export function LandingPageForm() {
   }
 
   const fillDummyData = () => {
-    const randomSet = DUMMY_DATA_SETS[Math.floor(Math.random() * DUMMY_DATA_SETS.length)]
+    if (DUMMY_DATA_SETS.length === 0) return
+
+    let order = dummyOrder
+    let index = dummyIndex
+
+    // If we've consumed the current permutation, generate a new shuffled order
+    if (!order.length || index >= order.length) {
+      order = shuffleArray(Array.from({ length: DUMMY_DATA_SETS.length }, (_, i) => i))
+      setDummyOrder(order)
+      index = 0
+    }
+
+    const randomSet = DUMMY_DATA_SETS[order[index]]
     // If legacy brandColorPalette exists, parse into new fields
     const parsed = parsePaletteString((randomSet as any).brandColorPalette)
     setFormData({
@@ -2483,6 +2508,7 @@ export function LandingPageForm() {
       logoUpload: null,
       faviconUpload: null,
     })
+    setDummyIndex(index + 1)
     setErrors({})
   }
 
