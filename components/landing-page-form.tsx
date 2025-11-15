@@ -50,6 +50,7 @@ import { TagInput } from "@/components/ui/tag-input"
 import { ThemeSelector } from "@/components/ui/theme-selector"
 import { SectionSelector } from "@/components/ui/section-selector"
 import type { SectionType } from "@/components/ui/section-preview"
+import { generateSessionId } from "@/lib/session"
 
 // Branded icons using assets from /public for specific fields
 const YouTubeLogoIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -2480,7 +2481,11 @@ export function LandingPageForm() {
     console.log('[form] Built payload from formData:', payload)
     console.log('[form] FormData state:', formData)
     setPayload(payload)
-    router.push('/builder')
+
+    // Create a new session id for this brief and redirect to the session-scoped builder route.
+    // Backend will receive the same id via `x-session-id` when streaming starts.
+    const sessionId = generateSessionId()
+    router.push(`/builder/${encodeURIComponent(sessionId)}`)
   }
 
   const fillDummyData = () => {

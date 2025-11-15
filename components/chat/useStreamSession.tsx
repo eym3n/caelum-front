@@ -52,20 +52,40 @@ function buildComponentAckMessage(): string {
   ].join('\n')
 }
 
-export function useStreamSession() {
+export function useStreamSession(externalSessionId?: string) {
   const [state, setState] = useState<BuilderState>(() => ({
-    sessionId: generateSessionId(),
+    sessionId: externalSessionId || generateSessionId(),
     messages: [],
     status: 'idle',
   }))
   const abortRef = useRef<AbortController | null>(null)
   const startedRef = useRef(false)
 
+  // Keep internal sessionId in sync with provided one (e.g., from route /builder/[sessionId])
+  useEffect(() => {
+    if (!externalSessionId) return
+    setState((prev) => {
+      if (prev.sessionId === externalSessionId) return prev
+      return {
+        ...prev,
+        sessionId: externalSessionId,
+        messages: [],
+        status: 'idle',
+      }
+    })
+    startedRef.current = false
+  }, [externalSessionId])
+
   const reset = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
-    setState({ sessionId: generateSessionId(), messages: [], status: 'idle' })
+    setState((prev) => ({
+      sessionId: externalSessionId || generateSessionId(),
+      messages: [],
+      status: 'idle',
+      error: undefined,
+    }))
     startedRef.current = false
-  }, [])
+  }, [externalSessionId])
 
   const start = useCallback(async ({ payload, endpoint = 'https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/init/stream' }: StartOptions) => {
     if (startedRef.current) return

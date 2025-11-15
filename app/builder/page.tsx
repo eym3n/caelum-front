@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useStreamSession } from '@/components/chat/useStreamSession'
 import { ChatPane } from '@/components/chat/ChatPane'
@@ -13,19 +13,15 @@ import { Smartphone, Maximize2, Minimize2, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function BuilderPage() {
-  const { messages, status, start, reset, sessionId, error } = useStreamSession()
+  const params = useParams<{ sessionId?: string }>()
+  const routeSessionId = params?.sessionId as string | undefined
+  const { messages, status, start, sessionId, error } = useStreamSession(routeSessionId)
   const router = useRouter()
   const { payload } = usePayload()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const [ratio, setRatio] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = window.localStorage.getItem('builder:ratio')
-      if (stored) return Math.min(0.6667, Math.max(0.35, parseFloat(stored)))
-    }
-    return 0.65 // preview width ratio
-  })
+  const [ratio, setRatio] = useState<number>(0.65)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const prevRatioRef = React.useRef<number>(0.65)
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
@@ -43,19 +39,36 @@ export default function BuilderPage() {
   }, [])
 
   useEffect(() => {
+    if (!routeSessionId) {
+      router.replace('/create')
+    }
+  }, [routeSessionId, router])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem('builder:ratio')
+    if (!stored) return
+    const parsed = parseFloat(stored)
+    if (Number.isFinite(parsed)) {
+      const clamped = Math.min(0.6667, Math.max(0.35, parsed))
+      setRatio(clamped)
+    }
+  }, [])
+
+  useEffect(() => {
     window.localStorage.setItem('builder:ratio', ratio.toString())
   }, [ratio])
 
   useEffect(() => {
+    if (!routeSessionId) return
     if (status !== 'idle') return
     if (!payload) {
-      console.warn('[builder] No payload available, redirecting to /create')
-      router.push('/create')
+      console.log('[builder] No payload provided; awaiting existing session activity.')
       return
     }
     console.log('[builder] Using payload from context:', payload)
     start({ payload })
-  }, [status, start, payload, router])
+  }, [status, start, payload, routeSessionId])
 
   // Compute tool status for preview pane toast
   const toolStatus = useMemo(() => {
@@ -123,14 +136,17 @@ export default function BuilderPage() {
   // Exclude synthetic messages (user_brief, intake_component) added before streaming starts
   // Tool messages (designer_tools, coder_tools) are valid first events
   const hasFirstStreamedEvent = useMemo(() => {
-    return messages.some(m => 
+    return messages.some(m =>
       m?.raw && // Real streamed event has 'raw' property
-      m?.type === 'message' && 
-      m?.node && 
+      m?.type === 'message' &&
+      m?.node &&
       m.node !== 'user_brief' &&
       m.node !== 'intake_component'
     )
   }, [messages])
+
+  const hasRouteSession = typeof routeSessionId === 'string' && routeSessionId.length > 0
+  const previewEnabled = hasFirstStreamedEvent || (!payload && hasRouteSession)
 
   // Reset preview-ready metadata when a new session starts
   useEffect(() => {
@@ -245,7 +261,7 @@ export default function BuilderPage() {
                     return next;
                   });
                 }}
-                disabled={!hasFirstStreamedEvent}
+                disabled={!previewEnabled}
                 className="text-xs rounded-md px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >Refresh</button>
             </div>
@@ -254,7 +270,7 @@ export default function BuilderPage() {
             {/* Manual refresh only; no auto reload */}
             <LivePreview
               sessionId={sessionId}
-              enabled={hasFirstStreamedEvent}
+              enabled={previewEnabled}
               refreshToken={previewRefresh}
               onFirstReady={() => {
                 // Mark the preview as safely booted; subsequent "done" signals can trigger
