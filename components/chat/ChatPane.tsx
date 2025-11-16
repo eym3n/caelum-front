@@ -61,6 +61,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploySuccess, setDeploySuccess] = useState(false)
+  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null)
   const [chatInput, setChatInput] = useState('')
   const [isChatStreaming, setIsChatStreaming] = useState(false)
   const [followUpMessages, setFollowUpMessages] = useState<StreamMessage[]>([]) // transitional; will be removed
@@ -82,6 +83,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
       if (response.ok) {
         const url = `${sessionId}.vercel.app`
         setDeploySuccess(true)
+        setDeploymentUrl(url)
         if (onDeploySuccess) onDeploySuccess(url)
         setTimeout(() => setDeploySuccess(false), 2500)
       } else {
@@ -161,6 +163,11 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
     // Use instant scroll during streaming to avoid queuing many smooth animations
     bottomRef.current.scrollIntoView({ behavior: isChatStreaming ? 'auto' : 'smooth', block: 'end' })
   }, [conversation, isChatStreaming])
+
+  useEffect(() => {
+    setDeploymentUrl(null)
+    setDeploySuccess(false)
+  }, [sessionId])
 
   const sendFollowUp = async () => {
     const message = chatInput.trim()
@@ -307,6 +314,24 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
         aria-relevant="additions"
         aria-label="Chat messages"
       >
+        {deploymentUrl && (
+          <div className="sticky top-0 z-20 -mx-4 px-4 pt-0 pb-3 bg-background/95 backdrop-blur">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-(--color-border) bg-(--color-card) px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                <Image src="/vercel-icon.svg" alt="Vercel" width={14} height={14} />
+                <span>Live deployment</span>
+              </div>
+              <a
+                href={`https://${deploymentUrl}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 truncate text-xs font-semibold text-primary hover:underline"
+              >
+                https://{deploymentUrl}
+              </a>
+            </div>
+          </div>
+        )}
         {error && (
           <div className="my-4 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
             Error: {error}
