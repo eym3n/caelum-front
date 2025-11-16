@@ -59,6 +59,15 @@ export default function BuilderPage() {
     window.localStorage.setItem('builder:ratio', ratio.toString())
   }, [ratio])
 
+  const handleFollowUpDone = React.useCallback(() => {
+    if (!previewReady) return
+    console.log('[builder] Auto-refreshing preview after follow-up done signal', {
+      sessionId,
+      previewReady,
+    })
+    setPreviewRefresh((r) => r + 1)
+  }, [previewReady, sessionId])
+
   useEffect(() => {
     if (!routeSessionId) return
     if (status !== 'idle') return
@@ -313,6 +322,7 @@ export default function BuilderPage() {
             onToolMessage={(text) => {
               setFollowUpToolText(text?.trim() || 'Working...')
             }}
+            onDoneSignal={handleFollowUpDone}
             // Removed onChatProgress to stop auto preview refresh
           />
         </div>

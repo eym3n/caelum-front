@@ -52,11 +52,12 @@ interface Props {
   onChatStreamState?: (active: boolean) => void
   onToolMessage?: (text: string) => void
   onChatProgress?: () => void
+  onDoneSignal?: () => void
 }
 
 // Deprecated: previous single-bubble processed message approach removed.
 
-export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage, onChatProgress }: Props) {
+export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage, onChatProgress, onDoneSignal }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploySuccess, setDeploySuccess] = useState(false)
@@ -173,6 +174,12 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   const agentId = `agent-${Date.now()}`
   setConversation(prev => [...prev, { id: agentId, role: 'agent', text: 'Working...', working: true }])
     // Removed progress increment here to avoid triggering preview reload before any file/tool event
+    let doneNotified = false
+    const notifyDone = () => {
+      if (doneNotified) return
+      doneNotified = true
+      if (onDoneSignal) onDoneSignal()
+    }
     try {
       const res = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/chat/stream', {
         method: 'POST',
@@ -221,6 +228,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
                   setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
                   setIsChatStreaming(false)
                   if (onChatStreamState) onChatStreamState(false)
+                  notifyDone()
                   // Do not increment progress on coder done; reload only on tool/file events
                 }
               }
@@ -247,6 +255,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
             if (msg.done) {
               setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
               // coder done; no progress increment
+              notifyDone()
             }
           }
         } catch {}
