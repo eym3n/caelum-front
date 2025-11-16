@@ -278,7 +278,6 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
         <div className="flex items-center gap-2">
           <button
             onClick={handleDeploy}
-            disabled={true}
             className="text-xs rounded-md px-4 py-1.5 bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
           >
             {isDeploying ? (
