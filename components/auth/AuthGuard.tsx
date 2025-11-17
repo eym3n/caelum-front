@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
@@ -10,7 +10,7 @@ interface AuthGuardProps {
   fallback?: React.ReactNode;
 }
 
-export function AuthGuard({ children, fallback }: AuthGuardProps) {
+function AuthGuardInner({ children, fallback }: AuthGuardProps) {
   const { user, initialized, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -57,5 +57,31 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
   }
 
   return <>{children}</>;
+}
+
+export function AuthGuard({ children, fallback }: AuthGuardProps) {
+  return (
+    <Suspense
+      fallback={
+        fallback ?? (
+          <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
+            <div className="relative">
+              <div className="absolute inset-0 animate-ping rounded-full bg-primary/30 blur-xl" />
+              <Image
+                src="/logo.svg"
+                alt="caelum.ai"
+                width={64}
+                height={64}
+                className="relative size-14 animate-pulse"
+                priority
+              />
+            </div>
+          </div>
+        )
+      }
+    >
+      <AuthGuardInner fallback={fallback}>{children}</AuthGuardInner>
+    </Suspense>
+  );
 }
 
