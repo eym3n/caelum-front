@@ -2572,11 +2572,11 @@ export function LandingPageForm() {
       <div className="relative z-10 mx-auto w-full max-w-[1600px] px-6 py-12 lg:px-16 xl:px-20">
         <div className="flex flex-col gap-6">
           <Link
-            href="/"
+            href="/dashboard"
             className="inline-flex w-fit items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to home
+            Back to dashboard
           </Link>
         </div>
 

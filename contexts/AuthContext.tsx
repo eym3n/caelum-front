@@ -9,6 +9,8 @@ import {
   type AuthTokens,
   type AuthUser,
 } from "@/lib/api/auth";
+import { useAppDispatch } from "@/store/hooks";
+import { clearUser as clearUserAction, setUser as setUserAction } from "@/store/user/userSlice";
 
 const ACCESS_TOKEN_KEY = "caelum.auth.accessToken";
 const REFRESH_TOKEN_KEY = "caelum.auth.refreshToken";
@@ -25,7 +27,7 @@ type RegisterArgs = {
   fullName?: string;
 };
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: AuthUser | null;
   accessToken: string | null;
   refreshToken: string | null;
@@ -84,6 +86,7 @@ function readStoredUser(): AuthUser | null {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const dispatch = useAppDispatch();
   const [accessToken, setAccessToken] = React.useState<string | null>(null);
   const [refreshToken, setRefreshToken] = React.useState<string | null>(null);
   const [user, setUser] = React.useState<AuthUser | null>(null);
@@ -94,9 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(null);
     setRefreshToken(null);
     setUser(null);
+    dispatch(clearUserAction());
     persistTokens(null, null);
     persistUser(null);
-  }, []);
+  }, [dispatch]);
 
   const applyTokens = React.useCallback((tokens: AuthTokens) => {
     setAccessToken(tokens.accessToken);
@@ -108,10 +112,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (token: string): Promise<AuthUser> => {
       const profile = await getCurrentUser(token);
       setUser(profile);
+      dispatch(setUserAction(profile));
       persistUser(profile);
       return profile;
     },
-    []
+    [dispatch]
   );
 
   const refreshAccessToken = React.useCallback(async (tokenOverride?: string) => {

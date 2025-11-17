@@ -42,8 +42,8 @@
   --sidebar-border: #e5e7eb;
   --sidebar-ring: #c7d2fe;
   --shadow-x: 0px;
-  --shadow-y: 2px;
-  --shadow-blur: 10px;
+  --shadow-y: 0px;
+  --shadow-blur: 0px;
   --shadow-spread: 0px;
   --shadow-opacity: 0.08;
   --shadow-color: #000000;
@@ -225,5 +225,14 @@
     50% {
       opacity: 1;
     }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

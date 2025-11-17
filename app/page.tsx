@@ -6,10 +6,12 @@ import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function Home() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { user, initialized } = useAuth()
   useEffect(() => setMounted(true), [])
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden relative">
@@ -27,6 +29,13 @@ export default function Home() {
             <span className="text-sm font-semibold tracking-tight">caelum.ai</span>
           </div>
           <div className="flex items-center gap-2">
+            {initialized && user ? (
+              <Link href="/dashboard">
+                <Button size="sm" variant="ghost" className="text-foreground">
+                  Dashboard
+                </Button>
+              </Link>
+            ) : null}
             <Link href="/create">
               <Button size="sm" className="bg-primary text-white hover:bg-primary/90">
                 Get Started

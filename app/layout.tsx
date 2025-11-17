@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { PayloadProvider } from "@/contexts/PayloadContext"
+import { AppProviders } from "@/components/providers/AppProviders"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { ThemeProvider } from "@/components/theme-provider"
 
@@ -29,11 +30,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.className} ${fontSans.variable} ${fontMono.variable} font-sans antialiased bg-[radial-gradient(circle_at_25%_25%,rgba(114,105,248,0.10),transparent_60%),radial-gradient(circle_at_75%_65%,rgba(114,105,248,0.08),transparent_70%)]`}>        
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <AuthProvider>
-            <PayloadProvider>
-              {children}
-            </PayloadProvider>
-          </AuthProvider>
+          <AppProviders>
+            <AuthProvider>
+              <PayloadProvider>
+                {children}
+              </PayloadProvider>
+            </AuthProvider>
+          </AppProviders>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' ? <Analytics /> : null}
       </body>
