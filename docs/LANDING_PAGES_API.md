@@ -65,7 +65,7 @@ All landing page viewing endpoints require JWT authentication and are prefixed w
 Start a new landing page generation. This endpoint automatically creates a landing page record and starts the agent workflow.
 
 ```bash
-curl -X POST "http://localhost:8080/v1/agent/init/stream" \
+curl -X POST "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/init/stream" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "X-Session-Id: my-session-123" \
   -H "Content-Type: application/json" \
@@ -98,7 +98,7 @@ Get all landing pages for the authenticated user with pagination.
 - `status_filter` (optional) - Filter by status: `pending`, `generating`, `generated`, `failed`
 
 ```bash
-curl -X GET "http://localhost:8080/v1/landing-pages/?page=1&page_size=20&status_filter=generated" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/?page=1&page_size=20&status_filter=generated" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -131,7 +131,7 @@ curl -X GET "http://localhost:8080/v1/landing-pages/?page=1&page_size=20&status_
 Get a specific landing page by its ID.
 
 ```bash
-curl -X GET "http://localhost:8080/v1/landing-pages/550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/550e8400-e29b-41d4-a716-446655440000" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -156,7 +156,7 @@ curl -X GET "http://localhost:8080/v1/landing-pages/550e8400-e29b-41d4-a716-4466
 Get a landing page by its session ID.
 
 ```bash
-curl -X GET "http://localhost:8080/v1/landing-pages/session/my-session-123" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/session/my-session-123" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -169,7 +169,7 @@ curl -X GET "http://localhost:8080/v1/landing-pages/session/my-session-123" \
 Update a landing page's status and URLs.
 
 ```bash
-curl -X PATCH "http://localhost:8080/v1/landing-pages/550e8400-e29b-41d4-a716-446655440000" \
+curl -X PATCH "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/550e8400-e29b-41d4-a716-446655440000" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -197,7 +197,7 @@ curl -X PATCH "http://localhost:8080/v1/landing-pages/550e8400-e29b-41d4-a716-44
 Delete a landing page (only if owned by the user).
 
 ```bash
-curl -X DELETE "http://localhost:8080/v1/landing-pages/550e8400-e29b-41d4-a716-446655440000" \
+curl -X DELETE "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/550e8400-e29b-41d4-a716-446655440000" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -344,16 +344,16 @@ All endpoints require:
 
 ```bash
 # 1. Register a user
-curl -X POST "http://localhost:8080/v1/auth/register" \
+curl -X POST "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/auth/register" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123","full_name":"Test User"}'
 
 # 2. Login
-ACCESS_TOKEN=$(curl -X POST "http://localhost:8080/v1/auth/login" \
+ACCESS_TOKEN=$(curl -X POST "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/auth/login" \
   -d "email=test@example.com&password=password123" | jq -r '.access_token')
 
 # 3. Start a landing page generation (creates landing page automatically)
-curl -X POST "http://localhost:8080/v1/agent/init/stream" \
+curl -X POST "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/init/stream" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "X-Session-Id: test-session-1" \
   -H "Content-Type: application/json" \
@@ -375,15 +375,15 @@ curl -X POST "http://localhost:8080/v1/agent/init/stream" \
 # Status updates to "generated" when deployment succeeds
 
 # 4. List all your landing pages
-curl -X GET "http://localhost:8080/v1/landing-pages/" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 
 # 5. Get specific landing page by session ID
-curl -X GET "http://localhost:8080/v1/landing-pages/session/test-session-1" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/session/test-session-1" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 
 # 6. Filter by status
-curl -X GET "http://localhost:8080/v1/landing-pages/?status_filter=generated" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/landing-pages/?status_filter=generated" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 

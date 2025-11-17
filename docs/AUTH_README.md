@@ -61,7 +61,7 @@ python -m app.main
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8080`
+The API will be available at `https://builder-agent-api-934682636966.europe-southwest1.run.app`
 
 ## API Endpoints
 
@@ -74,7 +74,7 @@ All auth endpoints are prefixed with `/v1/auth`
 **POST** `/v1/auth/register`
 
 ```bash
-curl -X POST "http://localhost:8080/v1/auth/register" \
+curl -X POST "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/auth/register" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -101,7 +101,7 @@ Response:
 **POST** `/v1/auth/login`
 
 ```bash
-curl -X POST "http://localhost:8080/v1/auth/login" \
+curl -X POST "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/auth/login" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "email=user@example.com&password=securepassword123"
 ```
@@ -120,7 +120,7 @@ Response:
 **GET** `/v1/auth/me`
 
 ```bash
-curl -X GET "http://localhost:8080/v1/auth/me" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/auth/me" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -142,7 +142,7 @@ Response:
 **POST** `/v1/auth/refresh`
 
 ```bash
-curl -X POST "http://localhost:8080/v1/auth/refresh" \
+curl -X POST "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/auth/refresh" \
   -H "Content-Type: application/json" \
   -d '{
     "refresh_token": "YOUR_REFRESH_TOKEN"
@@ -163,7 +163,7 @@ Response:
 **GET** `/v1/auth/test-protected`
 
 ```bash
-curl -X GET "http://localhost:8080/v1/auth/test-protected" \
+curl -X GET "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/auth/test-protected" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -299,7 +299,7 @@ If you see import errors after setup:
 You can test the authentication system using the FastAPI interactive docs:
 
 1. Start the server
-2. Go to `http://localhost:8080/docs`
+2. Go to `https://builder-agent-api-934682636966.europe-southwest1.run.app/docs`
 3. Test the endpoints interactively
 
 Or use the provided curl commands above.

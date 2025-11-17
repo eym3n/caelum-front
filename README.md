@@ -38,7 +38,7 @@ The experimental builder UI lives at `/builder` and streams agent output from yo
 - Restart button creates a fresh session and resets message history.
 
 ### Endpoint Contract
-`POST http://localhost:8080/v1/agent/init/stream`
+`POST https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/init/stream`
 
 Headers:
 - `x-session-id: launch-session-<uuid>`
