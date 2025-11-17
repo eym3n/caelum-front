@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { StreamMessage } from './types'
 import Image from 'next/image'
 import Markdown from '../ui/markdown'
+import { useAuth } from '@/contexts/AuthContext'
+import { API_BASE_URL } from '@/lib/config'
 
 // Fast typewriter for the latest agent message.
 // Defined at module scope so it doesn't remount on parent re-renders.
@@ -68,12 +70,13 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   interface ConversationItem { id: string; role: 'user' | 'agent'; text: string; working?: boolean }
   const [conversation, setConversation] = useState<ConversationItem[]>([])
   const prevConversationLenRef = useRef(0)
+  const { authorizedFetch } = useAuth()
 
   const handleDeploy = async () => {
     setIsDeploying(true)
     setDeploySuccess(false)
     try {
-      const response = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/deploy/vercel', {
+      const response = await authorizedFetch(`${API_BASE_URL}/v1/agent/deploy/vercel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +191,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
       if (onDoneSignal) onDoneSignal()
     }
     try {
-      const res = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/chat/stream', {
+      const res = await authorizedFetch(`${API_BASE_URL}/v1/agent/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

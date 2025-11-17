@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WebContainer, FileSystemTree } from "@webcontainer/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE_URL } from "@/lib/config";
 
 type Status =
   | "idle"
@@ -78,6 +80,7 @@ export default function LivePreview({ sessionId, enabled, refreshToken, onFirstR
   // Store functions in refs to avoid dependency issues
   const fetchFilesRef = useRef<typeof fetchFiles | null>(null);
   const ensureBootRef = useRef<typeof ensureBoot | null>(null);
+  const { authorizedFetch } = useAuth();
 
   const sanitize = (chunk: string) =>
     chunk
@@ -121,8 +124,8 @@ export default function LivePreview({ sessionId, enabled, refreshToken, onFirstR
     setStatus("fetching");
     setError(null);
     try {
-      const response = await fetch(
-        "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/files/get-files",
+      const response = await authorizedFetch(
+        `${API_BASE_URL}/v1/files/get-files`,
         {
           method: "GET",
           headers: {
@@ -147,7 +150,7 @@ export default function LivePreview({ sessionId, enabled, refreshToken, onFirstR
       appendLog(`✗ Fetch error: ${e.message}`);
       return null;
     }
-  }, [sessionId, fileTree]);
+  }, [sessionId, fileTree, authorizedFetch]);
 
   const killProcesses = () => {
     try {

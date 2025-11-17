@@ -4,6 +4,8 @@ import * as React from "react"
 import { X, Upload, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/AuthContext"
+import { API_BASE_URL } from "@/lib/config"
 
 interface SectionAssetsDialogProps {
   open: boolean
@@ -22,6 +24,7 @@ export function SectionAssetsDialog({
 }: SectionAssetsDialogProps) {
   const [assets, setAssets] = React.useState<string[]>(initialAssets)
   const [isUploading, setIsUploading] = React.useState(false)
+  const { authorizedFetch } = useAuth()
 
   React.useEffect(() => {
     if (open) {
@@ -56,8 +59,8 @@ export function SectionAssetsDialog({
       try {
         const form = new FormData()
         form.append("file", file)
-        const res = await fetch(
-          "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/uploads/upload-image",
+        const res = await authorizedFetch(
+          `${API_BASE_URL}/v1/uploads/upload-image`,
           {
             method: "POST",
             body: form,

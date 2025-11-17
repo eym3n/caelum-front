@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { TagInput } from "@/components/ui/tag-input"
 import type { SectionType } from "./section-preview"
+import { useAuth } from "@/contexts/AuthContext"
+import { API_BASE_URL } from "@/lib/config"
 
 interface FAQData {
   question: string
@@ -71,6 +73,7 @@ export function SectionDetailDialog({
 }: SectionDetailDialogProps) {
   const [localData, setLocalData] = React.useState(data)
   const [uploadingKey, setUploadingKey] = React.useState<string | null>(null)
+  const { authorizedFetch } = useAuth()
 
   React.useEffect(() => {
     setLocalData(data)
@@ -156,8 +159,8 @@ export function SectionDetailDialog({
       setUploadingKey(key)
       const form = new FormData()
       form.append("file", file)
-      const res = await fetch(
-        "https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/uploads/upload-image",
+      const res = await authorizedFetch(
+        `${API_BASE_URL}/v1/uploads/upload-image`,
         {
           method: "POST",
           body: form,

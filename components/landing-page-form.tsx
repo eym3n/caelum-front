@@ -38,6 +38,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePayload } from "@/contexts/PayloadContext"
+import { useAuth } from "@/contexts/AuthContext"
+import { API_BASE_URL } from "@/lib/config"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -2329,6 +2331,7 @@ const OPTIONAL_FIELDS = new Set<string>([
 export function LandingPageForm() {
   const router = useRouter()
   const { setPayload } = usePayload()
+  const { authorizedFetch } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<Partial<FormData>>({
     selectedSections: ["hero", "benefits", "features"],
@@ -2402,7 +2405,7 @@ export function LandingPageForm() {
       try {
         const form = new FormData()
         form.append('file', file)
-        const res = await fetch('https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/uploads/upload-image', {
+        const res = await authorizedFetch(`${API_BASE_URL}/v1/uploads/upload-image`, {
           method: 'POST',
           body: form,
         })

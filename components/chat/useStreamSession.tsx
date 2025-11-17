@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { StreamMessage, BuilderState } from './types'
 import { generateSessionId } from '@/lib/session'
+import { useAuth } from '@/contexts/AuthContext'
+import { API_BASE_URL } from '@/lib/config'
 
 interface StartOptions {
   payload: any // root object to send directly (now includes image URLs, not File objects)
@@ -53,6 +55,7 @@ function buildComponentAckMessage(): string {
 }
 
 export function useStreamSession(externalSessionId?: string) {
+  const { authorizedFetch } = useAuth()
   const [state, setState] = useState<BuilderState>(() => ({
     sessionId: externalSessionId || generateSessionId(),
     messages: [],
@@ -87,7 +90,7 @@ export function useStreamSession(externalSessionId?: string) {
     startedRef.current = false
   }, [externalSessionId])
 
-  const start = useCallback(async ({ payload, endpoint = 'https://builder-agent-api-934682636966.europe-southwest1.run.app/v1/agent/init/stream' }: StartOptions) => {
+  const start = useCallback(async ({ payload, endpoint = `${API_BASE_URL}/v1/agent/init/stream` }: StartOptions) => {
     if (startedRef.current) return
     startedRef.current = true
     const sessionId = state.sessionId
@@ -119,7 +122,7 @@ export function useStreamSession(externalSessionId?: string) {
         const parsed = JSON.parse(body)
         console.log('[stream] init payload keys', Object.keys(parsed.payload || {}))
       } catch {}
-      const res = await fetch(endpoint, {
+      const res = await authorizedFetch(endpoint, {
         method: 'POST',
         headers: {
           'x-session-id': sessionId,
@@ -184,7 +187,7 @@ export function useStreamSession(externalSessionId?: string) {
       if (controller.signal.aborted) return
       setState((s) => ({ ...s, status: 'error', error: error.message }))
     }
-  }, [state.sessionId])
+  }, [authorizedFetch, state.sessionId])
 
   return { ...state, start, reset }
 }

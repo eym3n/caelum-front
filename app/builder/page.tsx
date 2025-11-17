@@ -11,6 +11,7 @@ import { usePayload } from '@/contexts/PayloadContext'
 import Image from 'next/image'
 import { Smartphone, Maximize2, Minimize2, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 
 export default function BuilderPage() {
   const params = useParams<{ sessionId?: string }>()
@@ -183,7 +184,8 @@ export default function BuilderPage() {
   }, [status, previewReady, autoRefreshedSessionId, sessionId])
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
+    <AuthGuard>
+      <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
       {/* Background accents */}
       <div className="fixed inset-0 bg-grid pointer-events-none" />
       <div className="fixed -top-40 -left-40 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(114,105,248,0.14),transparent_60%)] blur-2xl pointer-events-none" />
@@ -327,6 +329,7 @@ export default function BuilderPage() {
           />
         </div>
       </div>
-    </div>
+      </div>
+    </AuthGuard>
   )
 }
