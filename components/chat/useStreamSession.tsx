@@ -90,104 +90,147 @@ export function useStreamSession(externalSessionId?: string) {
     startedRef.current = false
   }, [externalSessionId])
 
-  const start = useCallback(async ({ payload, endpoint = `${API_BASE_URL}/v1/agent/init/stream` }: StartOptions) => {
-    if (startedRef.current) return
-    startedRef.current = true
-    const sessionId = state.sessionId
-    const userBriefMessage: StreamMessage = {
-      type: 'message',
-      node: 'user_brief',
-      text: buildUserBriefMessage(payload),
-    }
-    const componentAckMessage: StreamMessage = {
-      type: 'message',
-      node: 'intake_component',
-      text: buildComponentAckMessage(),
-    }
+  const start = useCallback(
+    async ({ payload, endpoint = `${API_BASE_URL}/v1/agent/init` }: StartOptions) => {
+      if (startedRef.current) return
+      startedRef.current = true
 
-    setState((s) => ({
-      ...s,
-      status: 'initializing',
-      messages: [...s.messages, userBriefMessage, componentAckMessage],
-    }))
-    // Send JSON body directly (cloud-native, assets already URLs)
-    const body = JSON.stringify({ payload })
+      const sessionId = state.sessionId
 
-    const controller = new AbortController()
-    abortRef.current = controller
-
-    try {
-      // Debug: payload keys
-      try {
-        const parsed = JSON.parse(body)
-        console.log('[stream] init payload keys', Object.keys(parsed.payload || {}))
-      } catch {}
-      const res = await authorizedFetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'x-session-id': sessionId,
-          'Content-Type': 'application/json'
-        },
-        body,
-        signal: controller.signal,
-      })
-      if (!res.ok) {
-        throw new Error(`Request failed: ${res.status}`)
+      const userBriefMessage: StreamMessage = {
+        type: 'message',
+        node: 'user_brief',
+        text: buildUserBriefMessage(payload),
       }
-      setState((s) => ({ ...s, status: 'streaming' }))
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No stream reader available')
-      const decoder = new TextDecoder('utf-8')
-      let buffered = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffered += decoder.decode(value, { stream: true })
-        // Split on newlines and process complete lines
-        const lines = buffered.split(/\r?\n/) // SSE style
-        // Keep potential partial
-        buffered = lines.pop() || ''
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed) continue
-          if (!trimmed.startsWith('data:')) continue
-          const jsonPart = trimmed.slice(5).trim()
-          try {
-            const obj = JSON.parse(jsonPart) as any
-            const msg: StreamMessage = {
-              type: obj.type,
-              node: obj.node,
-              text: obj.text,
-              raw: jsonPart,
-              done: obj.type === 'done',
-            }
-            setState((s) => ({ ...s, messages: [...s.messages, msg] }))
-            if (msg.done) {
-              setState((s) => ({ ...s, status: 'completed' }))
-              if (abortRef.current) abortRef.current.abort()
+      const componentAckMessage: StreamMessage = {
+        type: 'message',
+        node: 'intake_component',
+        text: buildComponentAckMessage(),
+      }
+
+      setState((s) => ({
+        ...s,
+        status: 'initializing',
+        messages: [...s.messages, userBriefMessage, componentAckMessage],
+      }))
+
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      try {
+        // Send JSON body directly (cloud-native, assets already URLs)
+        const body = JSON.stringify({ session_id: sessionId, payload })
+
+        const res = await authorizedFetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'x-session-id': sessionId,
+            'Content-Type': 'application/json',
+          },
+          body,
+          signal: controller.signal,
+        })
+
+        if (!res.ok) {
+          throw new Error(`Init request failed: ${res.status}`)
+        }
+
+        const { job_id: jobId } = (await res.json()) as { job_id?: string }
+        if (!jobId) {
+          throw new Error('Missing job_id in init response')
+        }
+
+        setState((s) => ({ ...s, status: 'streaming' }))
+
+        const seenEventIds = new Set<string>()
+
+        const pollJob = async () => {
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            if (controller.signal.aborted) return
+
+            try {
+              const jobRes = await authorizedFetch(`${API_BASE_URL}/v1/jobs/${jobId}`, {
+                method: 'GET',
+                headers: {
+                  'x-session-id': sessionId,
+                },
+                signal: controller.signal,
+              })
+
+              if (!jobRes.ok) {
+                throw new Error(`Job poll failed: ${jobRes.status}`)
+              }
+
+              const payload = (await jobRes.json()) as any
+              const job = payload?.job
+              const events = (job?.events ?? []) as any[]
+
+              setState((prev) => {
+                const nextMessages = [...prev.messages]
+
+                for (const event of events) {
+                  if (!event?.id || seenEventIds.has(event.id)) continue
+                  seenEventIds.add(event.id)
+
+                  const msg: StreamMessage = {
+                    type: event.event_type || 'message',
+                    node: event.node,
+                    text: event.message,
+                    raw: JSON.stringify(event),
+                  }
+
+                  nextMessages.push(msg)
+                }
+
+                let nextStatus: BuilderState['status'] = prev.status
+                let nextError = prev.error
+
+                if (job?.status === 'completed') {
+                  nextStatus = 'completed'
+                } else if (job?.status === 'failed' || job?.status === 'cancelled') {
+                  nextStatus = 'error'
+                  nextError = job?.error_message || 'Job failed'
+                } else if (job?.status === 'pending' || job?.status === 'running') {
+                  nextStatus = 'streaming'
+                }
+
+                return {
+                  ...prev,
+                  messages: nextMessages,
+                  status: nextStatus,
+                  error: nextError,
+                }
+              })
+
+              if (job && ['completed', 'failed', 'cancelled'].includes(job.status)) {
+                controller.abort()
+                abortRef.current = null
+                return
+              }
+            } catch (err: any) {
+              if (controller.signal.aborted) return
+              console.error('[init] Job poll error', err)
+              setState((s) => ({
+                ...s,
+                status: 'error',
+                error: err?.message || 'Job poll failed',
+              }))
               return
             }
-          } catch (err) {
-            console.error('Parse error', err)
+
+            await new Promise((resolve) => setTimeout(resolve, 3000))
           }
         }
+
+        void pollJob()
+      } catch (error: any) {
+        if (controller.signal.aborted) return
+        setState((s) => ({ ...s, status: 'error', error: error.message || 'Init failed' }))
       }
-      // Flush remainder
-      if (buffered.trim().startsWith('data:')) {
-        try {
-          const jsonPart = buffered.trim().slice(5).trim()
-          const obj = JSON.parse(jsonPart)
-          const msg: StreamMessage = { type: obj.type, node: obj.node, text: obj.text, raw: jsonPart, done: obj.type === 'done' }
-          setState((s) => ({ ...s, messages: [...s.messages, msg] }))
-          if (msg.done) setState((s) => ({ ...s, status: 'completed' }))
-        } catch {}
-      }
-      setState((s) => (s.status === 'completed' ? s : { ...s, status: 'completed' }))
-    } catch (error: any) {
-      if (controller.signal.aborted) return
-      setState((s) => ({ ...s, status: 'error', error: error.message }))
-    }
-  }, [authorizedFetch, state.sessionId])
+    },
+    [authorizedFetch, state.sessionId],
+  )
 
   return { ...state, start, reset }
 }

@@ -27,7 +27,6 @@ export default function BuilderPage() {
   const prevRatioRef = React.useRef<number>(0.65)
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
   const [isFollowUpStreaming, setIsFollowUpStreaming] = useState(false)
-  const [followUpToolText, setFollowUpToolText] = useState<string | null>(null)
   // Manual refresh counter (also used for safe, single auto-refresh when build is done)
   const [previewRefresh, setPreviewRefresh] = useState(0)
   // Tracks whether the preview environment has successfully reached "ready" at least once
@@ -76,52 +75,36 @@ export default function BuilderPage() {
       console.log('[builder] No payload provided; awaiting existing session activity.')
       return
     }
-    console.log('[builder] Using payload from context:', payload)
+    // Prevent duplicate init calls for the same session (e.g., React strict mode double effects or remounts)
+    if (typeof window !== 'undefined') {
+      const key = `builder:init-started:${routeSessionId}`
+      if (window.sessionStorage.getItem(key) === '1') {
+        console.log('[builder] Init already started for this session; skipping duplicate init.', {
+          routeSessionId,
+        })
+        return
+      }
+      window.sessionStorage.setItem(key, '1')
+    }
+    console.log('[builder] Using payload from context, starting init job:', {
+      sessionId,
+      routeSessionId,
+    })
     start({ payload })
   }, [status, start, payload, routeSessionId])
 
   // Compute tool status for preview pane toast
   const toolStatus = useMemo(() => {
-    // During follow-up streaming always show toast with latest tool text or generic working
-    if (isFollowUpStreaming) {
-      return { text: followUpToolText || 'Working...', shouldRender: true }
-    }
-    const isVisibleMessage = (msg: StreamMessage) =>
-      msg?.type === 'message' &&
-      msg?.node &&
-      !msg.node.includes('_tools') &&
-      !msg.node.includes('designer') &&
-      (msg.node.includes('clarify') ||
-      msg.node.includes('coder'))
+    const shouldRender =
+      status === 'initializing' ||
+      status === 'streaming' ||
+      isFollowUpStreaming
 
-    let latestIndex = -1
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      const candidate = messages[i]
-      if (candidate?.node?.includes('_tools')) {
-        latestIndex = i
-        break
-      }
-    }
-
-    if (latestIndex === -1) {
-      const shouldRender = status === 'initializing' || status === 'streaming'
-      return {
-        text: 'Working...',
-        shouldRender,
-      }
-    }
-
-    const hasAgentAfterTool = messages.slice(latestIndex + 1).some(isVisibleMessage)
-    if (hasAgentAfterTool) {
-      return { text: '', shouldRender: false }
-    }
-
-    const latestToolText = messages[latestIndex]?.text?.trim()
     return {
-      text: latestToolText && latestToolText.length > 0 ? latestToolText : 'Working...',
-      shouldRender: true,
+      text: 'Working...',
+      shouldRender,
     }
-  }, [messages, status, isFollowUpStreaming, followUpToolText])
+  }, [status, isFollowUpStreaming])
 
   const previewStyle: React.CSSProperties = isFullscreen
     ? { flexGrow: 1, flexBasis: '100%' }
@@ -142,18 +125,12 @@ export default function BuilderPage() {
     setRatio(r)
   }
 
-  // Only enable WebContainer after first real streamed event (has 'raw' property from backend)
-  // Exclude synthetic messages (user_brief, intake_component) added before streaming starts
-  // Tool messages (designer_tools, coder_tools) are valid first events
-  const hasFirstStreamedEvent = useMemo(() => {
-    return messages.some(m =>
-      m?.raw && // Real streamed event has 'raw' property
-      m?.type === 'message' &&
-      m?.node &&
-      m.node !== 'user_brief' &&
-      m.node !== 'intake_component'
-    )
-  }, [messages])
+  // Enable WebContainer once we see the first designer_tools event from the async job.
+  // This guarantees that the initial file batch has been created before we boot the preview.
+  const hasFirstStreamedEvent = useMemo(
+    () => messages.some((m) => m?.node && m.node.includes('designer_tools')),
+    [messages],
+  )
 
   const hasRouteSession = typeof routeSessionId === 'string' && routeSessionId.length > 0
   const previewEnabled = hasFirstStreamedEvent || (!payload && hasRouteSession)
@@ -164,24 +141,29 @@ export default function BuilderPage() {
     setAutoRefreshedSessionId(null)
   }, [sessionId])
 
-  // Auto-refresh the live preview exactly once per session when the backend signals completion.
-  // This waits until the preview environment has successfully booted at least once to avoid
-  // interrupting the initial dependency installation / dev-server startup.
+  // Auto-refresh the live preview exactly once per session when the coder reports
+  // "Implemented landing page". This waits until the preview environment has
+  // successfully booted at least once to avoid interrupting the initial install/start.
   useEffect(() => {
     if (!previewReady) return
-    if (status !== 'completed') return
     if (autoRefreshedSessionId === sessionId) return
+    const hasImplementedEvent = messages.some(
+      (m) =>
+        m.node === 'coder' &&
+        typeof m.text === 'string' &&
+        m.text.toLowerCase().includes('implemented landing page'),
+    )
+    if (!hasImplementedEvent) return
 
-    console.log('[builder] Auto-refreshing preview on done signal', {
+    console.log('[builder] Auto-refreshing preview on coder implementation event', {
       sessionId,
-      status,
-      hasFirstStreamedEvent,
       previewReady,
+      hasImplementedEvent,
     })
 
     setPreviewRefresh((r) => r + 1)
     setAutoRefreshedSessionId(sessionId)
-  }, [status, previewReady, autoRefreshedSessionId, sessionId])
+  }, [messages, previewReady, autoRefreshedSessionId, sessionId])
 
   return (
     <AuthGuard>
@@ -307,26 +289,21 @@ export default function BuilderPage() {
           style={isFullscreen ? { display: 'none' } : chatStyle}
           className="flex flex-col min-h-0 min-w-[33%] border border-(--color-border) bg-(--color-card) rounded-xl shadow-sm overflow-hidden"
         >
-          <ChatPane
-            messages={messages}
-            status={status}
-            onRestart={() => {
-              router.push('/create')
-            }}
-            sessionId={sessionId}
-            error={error}
-            onDeploySuccess={(url) => setDeployedUrl(url)}
-            onChatStreamState={(active) => {
-              setIsFollowUpStreaming(active)
-              if (!active) setFollowUpToolText(null)
-              else setFollowUpToolText('Working...')
-            }}
-            onToolMessage={(text) => {
-              setFollowUpToolText(text?.trim() || 'Working...')
-            }}
-            onDoneSignal={handleFollowUpDone}
-            // Removed onChatProgress to stop auto preview refresh
-          />
+            <ChatPane
+              messages={messages}
+              status={status}
+              onRestart={() => {
+                router.push('/create')
+              }}
+              sessionId={sessionId}
+              error={error}
+              onDeploySuccess={(url) => setDeployedUrl(url)}
+              onChatStreamState={(active) => {
+                setIsFollowUpStreaming(active)
+              }}
+              onDoneSignal={handleFollowUpDone}
+              // Removed onChatProgress to stop auto preview refresh
+            />
         </div>
       </div>
       </div>

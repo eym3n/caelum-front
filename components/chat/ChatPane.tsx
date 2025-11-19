@@ -110,40 +110,35 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
     if ((status === 'initializing' || status === 'streaming') && conversation.length === 0) {
       setConversation([{ id: 'agent-initial', role: 'agent', text: 'Working...', working: true }])
     }
-    if (status === 'streaming') {
-      // Only surface coder messages; hide designer and clarify completely
-      const lastCoder = messages
+    if (status === 'initializing' || status === 'streaming') {
+      const latest = messages
         .slice()
         .reverse()
-        .find(m => m.type === 'message'
-          && m.node
-          && m.node.includes('coder'))
-      if (lastCoder) {
-        setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, text: (lastCoder.text || '').trim() || 'Working...' } : b))
-      }
-      // Mark done only when coder done event appears
-      if (messages.some(m => m.type === 'done' && m.node && m.node.includes('coder'))) {
-        setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, working: false } : b))
+        .find((m) => m.text && m.text.trim().length > 0)
+
+      if (latest) {
+        const progressText = latest.text?.trim() || 'Working...'
+        setConversation((prev) =>
+          prev.map((b) =>
+            b.id === 'agent-initial' ? { ...b, text: progressText } : b,
+          ),
+        )
       }
     }
     if (status === 'completed') {
-      // When completed, ensure we show the last coder message (done event is separate, so filter by type === 'message')
-      const lastCoderMessage = messages
+      const latest = messages
         .slice()
         .reverse()
-        .find(m => m.type === 'message'
-          && m.node
-          && m.node.includes('coder'))
-      if (lastCoderMessage) {
-        setConversation(prev => prev.map(b => 
-          b.id === 'agent-initial' 
-            ? { ...b, text: (lastCoderMessage.text || '').trim() || 'Working...', working: false }
-            : b
-        ))
-      } else {
-        // Fallback: just mark as not working
-        setConversation(prev => prev.map(b => b.id === 'agent-initial' ? { ...b, working: false } : b))
-      }
+        .find((m) => m.text && m.text.trim().length > 0)
+
+      const finalText = latest?.text?.trim() || 'Working...'
+      setConversation((prev) =>
+        prev.map((b) =>
+          b.id === 'agent-initial'
+            ? { ...b, text: finalText, working: false }
+            : b,
+        ),
+      )
     }
   }, [status, messages, conversation.length])
   // Include follow-up streaming state in dependencies so bubble updates
@@ -175,23 +170,28 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   const sendFollowUp = async () => {
     const message = chatInput.trim()
     if (!message || isChatStreaming) return
-  setIsChatStreaming(true)
-  if (onChatStreamState) onChatStreamState(true)
-  setFollowUpMessages([])
+
+    console.log('[chat] sending follow-up', { sessionId, message })
+
+    setIsChatStreaming(true)
+    if (onChatStreamState) onChatStreamState(true)
+    setFollowUpMessages([])
     setChatInput('')
-  const userId = `user-${Date.now()}`
-  setConversation(prev => [...prev, { id: userId, role: 'user', text: message }])
-  const agentId = `agent-${Date.now()}`
-  setConversation(prev => [...prev, { id: agentId, role: 'agent', text: 'Working...', working: true }])
-    // Removed progress increment here to avoid triggering preview reload before any file/tool event
+
+    const userId = `user-${Date.now()}`
+    setConversation((prev) => [...prev, { id: userId, role: 'user', text: message }])
+    const agentId = `agent-${Date.now()}`
+    setConversation((prev) => [...prev, { id: agentId, role: 'agent', text: 'Working...', working: true }])
+
     let doneNotified = false
     const notifyDone = () => {
       if (doneNotified) return
       doneNotified = true
       if (onDoneSignal) onDoneSignal()
     }
+
     try {
-      const res = await authorizedFetch(`${API_BASE_URL}/v1/agent/chat/stream`, {
+      const res = await authorizedFetch(`${API_BASE_URL}/v1/agent/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,81 +199,79 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
         },
         body: JSON.stringify({ message }),
       })
+
       if (!res.ok) throw new Error(`Chat request failed: ${res.status}`)
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No chat stream reader')
-      const decoder = new TextDecoder('utf-8')
-      let buffered = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffered += decoder.decode(value, { stream: true })
-        const lines = buffered.split(/\r?\n/)
-        buffered = lines.pop() || ''
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed || !trimmed.startsWith('data:')) continue
-            const jsonPart = trimmed.slice(5).trim()
-            try {
-              const obj = JSON.parse(jsonPart)
-              const msg: StreamMessage = {
-                type: obj.type,
-                node: obj.node,
-                text: obj.text,
-                raw: jsonPart,
-                done: obj.type === 'done',
-              }
-              if (msg.node && msg.node.includes('_tools')) {
-                if (onToolMessage) onToolMessage(msg.text || 'Working...')
-                if (onChatProgress) onChatProgress() // Only tool (file) events advance progress for preview reload
-                // Do not alter conversation for tool messages
-              } else if (msg.node && !msg.node.includes('coder')) {
-                // Ignore non-coder, non-tool messages
-              } else {
-                if (msg.type === 'message') {
-                  setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
-                  // Skip progress increment for each coder streaming chunk to prevent reload spam
-                }
-                if (msg.done) {
-                  setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
-                  setIsChatStreaming(false)
-                  if (onChatStreamState) onChatStreamState(false)
-                  notifyDone()
-                  // Do not increment progress on coder done; reload only on tool/file events
-                }
-              }
-            } catch (e) {
-              console.error('Chat parse error', e)
-            }
-        }
+
+      const { job_id: jobId } = (await res.json()) as { job_id?: string }
+      if (!jobId) {
+        throw new Error('Missing job_id in chat response')
       }
-      if (buffered.trim().startsWith('data:')) {
+
+      console.log('[chat] received chat job id', jobId)
+
+      const seenEventIds = new Set<string>()
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
         try {
-          const jsonPart = buffered.trim().slice(5).trim()
-          const obj = JSON.parse(jsonPart)
-          const msg: StreamMessage = { type: obj.type, node: obj.node, text: obj.text, raw: jsonPart, done: obj.type === 'done' }
-          if (msg.node && msg.node.includes('_tools')) {
-            if (onToolMessage) onToolMessage(msg.text || 'Working...')
-            if (onChatProgress) onChatProgress()
-          } else if (msg.node && !msg.node.includes('coder')) {
-            // Skip non-coder buffered message
-          } else {
-            if (msg.type === 'message') {
-              setConversation(prev => prev.map(b => b.id === agentId ? { ...b, text: (msg.text || '').trim() || 'Working...' } : b))
-              // coder message chunk; no progress increment
-            }
-            if (msg.done) {
-              setConversation(prev => prev.map(b => b.id === agentId ? { ...b, working: false } : b))
-              // coder done; no progress increment
-              notifyDone()
+          console.log('[chat] polling job', jobId)
+          const jobRes = await authorizedFetch(`${API_BASE_URL}/v1/jobs/${jobId}`, {
+            method: 'GET',
+            headers: {
+              'x-session-id': sessionId,
+            },
+          })
+
+          if (!jobRes.ok) {
+            throw new Error(`Job poll failed: ${jobRes.status}`)
+          }
+
+          const payload = (await jobRes.json()) as any
+          const job = payload?.job
+          const events = (job?.events ?? []) as any[]
+
+          for (const event of events) {
+            if (!event?.id || seenEventIds.has(event.id)) continue
+            seenEventIds.add(event.id)
+
+            const node: string = event.node || ''
+            const text: string = event.message || 'Working...'
+
+            if (node.includes('_tools')) {
+              if (onToolMessage) onToolMessage(text)
+              if (onChatProgress) onChatProgress()
+            } else {
+              const displayText = text.trim() || 'Working...'
+              setConversation((prev) =>
+                prev.map((b) =>
+                  b.id === agentId ? { ...b, text: displayText } : b,
+                ),
+              )
             }
           }
-        } catch {}
+
+          if (job && ['completed', 'failed', 'cancelled'].includes(job.status)) {
+            setConversation((prev) =>
+              prev.map((b) =>
+                b.id === agentId ? { ...b, working: false } : b,
+              ),
+            )
+            setIsChatStreaming(false)
+            if (onChatStreamState) onChatStreamState(false)
+            notifyDone()
+            break
+          }
+        } catch (err) {
+          console.error('Chat job poll error', err)
+          setIsChatStreaming(false)
+          if (onChatStreamState) onChatStreamState(false)
+          break
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 3000))
       }
-      setIsChatStreaming(false)
-      if (onChatStreamState) onChatStreamState(false)
     } catch (err) {
-      console.error('Chat stream error', err)
+      console.error('Chat job error', err)
       setIsChatStreaming(false)
       if (onChatStreamState) onChatStreamState(false)
     }
