@@ -107,7 +107,6 @@ interface FormData {
   primaryCTAText: string
   secondaryCTAText: string
   primaryConversionKPI: string
-  ctaApiEndpoint: string
 
   // Step 6: Content & Messaging
   toneOfVoice: string
@@ -144,6 +143,7 @@ interface FormData {
 
   // Step 10: Advanced
   formFieldsConfig: string
+  ctaApiEndpoint?: string
   analyticsIDs: string
   gtagID: string
   customPrompt: string
@@ -187,7 +187,7 @@ const STEPS = [
     id: 5,
     title: "Conversions",
     description: "Drive action",
-    fields: ["primaryCTAText", "secondaryCTAText", "primaryConversionKPI", "ctaApiEndpoint"],
+    fields: ["primaryCTAText", "secondaryCTAText", "primaryConversionKPI"],
   },
   {
     id: 6,
@@ -226,7 +226,7 @@ const STEPS = [
     id: 10,
     title: "Final Setup",
     description: "Analytics & AI prompt",
-    fields: ["formFieldsConfig", "analyticsIDs", "gtagID", "customPrompt"],
+    fields: ["formFieldsConfig", "ctaApiEndpoint", "analyticsIDs", "gtagID", "customPrompt"],
   },
 ]
 
@@ -330,12 +330,6 @@ const FIELD_LABELS: Record<
     type: "text",
     icon: BarChart3,
   },
-  ctaApiEndpoint: {
-    label: "API Endpoint (for form submissions)",
-    placeholder: "e.g., https://api.example.com/v1/leads",
-    type: "text",
-    icon: MousePointerClick,
-  },
   toneOfVoice: {
     label: "Tone of Voice",
     placeholder: "e.g., Formal, Friendly, Playful, Technical",
@@ -427,9 +421,15 @@ const FIELD_LABELS: Record<
   },
   formFieldsConfig: {
     label: "Form Fields & Configuration",
-    placeholder: "e.g., Name, Email, Company, Phone, API endpoint",
+    placeholder: "e.g., Name, Email, Company, Phone",
     type: "textarea",
     icon: Settings,
+  },
+  ctaApiEndpoint: {
+    label: "API Endpoint (for form submissions)",
+    placeholder: "e.g., https://api.example.com/v1/leads",
+    type: "text",
+    icon: Code,
   },
   analyticsIDs: {
     label: "Analytics IDs",
