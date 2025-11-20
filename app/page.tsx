@@ -67,7 +67,7 @@ export default function Home() {
               <span className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">to Life</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8">
-              Describe your product. Ayor Landing Pages plans, writes, designs, and assembles a conversion‑ready landing page—
+              Describe your product. Ayor's Agent plans, writes, designs, and assembles a conversion‑ready landing page—
               then lets you tweak everything before deploying.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
