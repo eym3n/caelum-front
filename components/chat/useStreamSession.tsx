@@ -49,9 +49,7 @@ function buildUserBriefMessage(payload: any): string {
 
 function buildComponentAckMessage(): string {
   return [
-    'Intake component online.',
-    'Brief cached and synced to the planning graph.',
-    'Warming synthesis loop for first responses...'
+    'Booting up...',
   ].join('\n')
 }
 
