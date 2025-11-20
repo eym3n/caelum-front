@@ -62,42 +62,24 @@ interface Props {
 
 export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage, onChatProgress, onDoneSignal, onJobComplete }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
-  const [isDeploying, setIsDeploying] = useState(false)
-  const [deploySuccess, setDeploySuccess] = useState(false)
-  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null)
   const [chatInput, setChatInput] = useState('')
   const [isChatStreaming, setIsChatStreaming] = useState(false)
   const [followUpMessages, setFollowUpMessages] = useState<StreamMessage[]>([]) // transitional; will be removed
   interface ConversationItem { id: string; role: 'user' | 'agent'; text: string; working?: boolean }
   const [conversation, setConversation] = useState<ConversationItem[]>([])
   const prevConversationLenRef = useRef(0)
+  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null)
   const { authorizedFetch } = useAuth()
 
   const handleDeploy = async () => {
-    setIsDeploying(true)
-    setDeploySuccess(false)
-    try {
-      const response = await authorizedFetch(`${API_BASE_URL}/v1/agent/deploy/vercel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-session-id': sessionId,
-        },
-      })
-      if (response.ok) {
-        const url = `${sessionId}.vercel.app`
-        setDeploySuccess(true)
-        setDeploymentUrl(url)
-        if (onDeploySuccess) onDeploySuccess(url)
-        setTimeout(() => setDeploySuccess(false), 2500)
-      } else {
-        console.error('Deploy failed', response.status, response.statusText)
-      }
-    } catch (e) {
-      console.error('Deploy error', e)
-    } finally {
-      setIsDeploying(false)
-    }
+    // Send "Deploy landing page" as a chat message
+    if (isChatStreaming || status === 'initializing' || status === 'streaming') return
+    
+    setChatInput('Deploy landing page')
+    // Use setTimeout to ensure the input is set before sending
+    setTimeout(() => {
+      sendFollowUp()
+    }, 0)
   }
 
   useEffect(() => {
@@ -162,11 +144,6 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
     // Use instant scroll during streaming to avoid queuing many smooth animations
     bottomRef.current.scrollIntoView({ behavior: isChatStreaming ? 'auto' : 'smooth', block: 'end' })
   }, [conversation, isChatStreaming])
-
-  useEffect(() => {
-    setDeploymentUrl(null)
-    setDeploySuccess(false)
-  }, [sessionId])
 
   const sendFollowUp = async () => {
     const message = chatInput.trim()
@@ -260,6 +237,21 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
             setIsChatStreaming(false)
             if (onChatStreamState) onChatStreamState(false)
             notifyDone()
+            
+            // Check if this was a deployment job and extract URL
+            if (job.status === 'completed' && job.type === 'chat') {
+              // Look for deployment event in the events
+              const deploymentEvent = events.find((e: any) => 
+                e.node === 'deployer' && e.event_type === 'node_completed'
+              )
+              if (deploymentEvent?.data?.deployment_url) {
+                const url = deploymentEvent.data.deployment_url
+                console.log('[ChatPane] Deployment completed, URL:', url)
+                setDeploymentUrl(url)
+                if (onDeploySuccess) onDeploySuccess(url)
+              }
+            }
+            
             // Refresh preview when job completes
             if (job.status === 'completed' && onJobComplete) {
               console.log('[ChatPane] Job completed, triggering preview refresh')
@@ -292,26 +284,11 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
         <div className="flex items-center gap-2">
           <button
             onClick={handleDeploy}
+            disabled={isChatStreaming || status === 'initializing' || status === 'streaming'}
             className="text-xs rounded-md px-4 py-1.5 bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
           >
-            {isDeploying ? (
-              <>
-                <div className="size-3 rounded-full border-2 border-gray-300 border-t-gray-900 animate-spin" />
-                <span>Deploying...</span>
-              </>
-            ) : deploySuccess ? (
-              <>
-                <svg className="size-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Deployed!</span>
-              </>
-            ) : (
-              <>
-                <Image src="/vercel-icon.svg" alt="Vercel" width={14} height={14} />
-                <span>Deploy to Vercel</span>
-              </>
-            )}
+            <Image src="/vercel-icon.svg" alt="Vercel" width={14} height={14} />
+            <span>Deploy to Vercel</span>
           </button>
         </div>
       </header>
