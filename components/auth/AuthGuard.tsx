@@ -40,7 +40,7 @@ function AuthGuardInner({ children, fallback }: AuthGuardProps) {
             <div className="absolute inset-0 animate-ping rounded-full bg-primary/30 blur-xl" />
             <Image
               src="/logo.svg"
-              alt="caelum.ai"
+              alt="Ayor Landing Pages logo"
               width={64}
               height={64}
               className="relative size-14 animate-pulse"
@@ -69,7 +69,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
               <div className="absolute inset-0 animate-ping rounded-full bg-primary/30 blur-xl" />
               <Image
                 src="/logo.svg"
-                alt="caelum.ai"
+                alt="Ayor Landing Pages logo"
                 width={64}
                 height={64}
                 className="relative size-14 animate-pulse"

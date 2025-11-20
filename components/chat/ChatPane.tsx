@@ -321,7 +321,7 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
             <div key={item.id} className="flex gap-3">
               <div className="shrink-0 mt-1">
                 <div className="size-8 rounded-full border border-(--color-border) overflow-hidden bg-background">
-                  <Image src="/logo.svg" alt="caelum.ai" width={32} height={32} />
+                <Image src="/logo.svg" alt="Ayor Landing Pages logo" width={32} height={32} />
                 </div>
               </div>
               <div className="flex-1 min-w-0">

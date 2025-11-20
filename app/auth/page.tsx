@@ -17,7 +17,7 @@ function AuthHeader({ mode }: { mode: Mode }) {
   const subtitle =
     mode === "login"
       ? "Sign in to continue building stunning landing pages."
-      : "Join caelum.ai and start crafting high-converting landing pages.";
+      : "Join Ayor Landing Pages and start crafting high-converting landing pages.";
 
   return (
     <div className="space-y-3 text-center">
@@ -202,7 +202,7 @@ export default function AuthPage() {
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background shadow-sm">
               <Sparkles className="h-4 w-4 text-primary" />
             </span>
-            caelum.ai
+            Ayor Landing Pages
           </Link>
         </div>
         <div className="grid w-full max-w-md gap-6">

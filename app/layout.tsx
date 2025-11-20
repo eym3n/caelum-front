@@ -16,9 +16,20 @@ const fontSans = Inter({ subsets: ['latin'], variable: '--font-sans', weight: ["
 const fontMono = Font_Geist_Mono({ subsets: ['latin'], weight: ["400","500","600"], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: "AI Landing Page Builder",
-  description: "Create stunning, conversion-optimized landing pages with AI in minutes",
-  generator: "v0.app",
+  title: "Ayor Landing Pages",
+  description: "Ayor Landing Pages helps teams craft conversion-ready experiences with AI-powered design, copy, and deployment.",
+  applicationName: "Ayor Landing Pages",
+  generator: "Ayor Landing Pages",
+  openGraph: {
+    title: "Ayor Landing Pages",
+    description: "Build, refine, and deploy high-converting landing pages in minutes with Ayor Landing Pages.",
+    siteName: "Ayor Landing Pages",
+  },
+  twitter: {
+    title: "Ayor Landing Pages",
+    description: "Build, refine, and deploy high-converting landing pages in minutes with Ayor Landing Pages.",
+    card: "summary_large_image",
+  },
 }
 
 export default function RootLayout({

@@ -200,8 +200,8 @@ export default function BuilderPage() {
       <header className="relative z-10 border-b border-(--color-border) bg-background/70 backdrop-blur">
         <div className="h-14 flex items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="caelum.ai" width={18} height={18} />
-            <span className="text-sm font-semibold">caelum.ai Builder</span>
+            <Image src="/logo.svg" alt="Ayor Landing Pages logo" width={18} height={18} />
+            <span className="text-sm font-semibold">Ayor Landing Pages Builder</span>
             <span className="ml-3 text-[11px] text-(--color-muted)">Session</span>
             <code className="text-[11px] px-1.5 py-0.5 rounded bg-(--color-card) border border-(--color-border)">{sessionId.slice(0, 8)}</code>
             <span className="ml-2 inline-flex items-center gap-1.5 text-[11px] rounded-full border border-(--color-border) bg-(--color-card) px-2 py-0.5">

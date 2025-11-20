@@ -2345,7 +2345,7 @@ const DUMMY_DATA_SETS = [
   },
   {
     campaignObjective: "Launch universal agentic AI landing page builder",
-    productServiceName: "Caelum.ai",
+    productServiceName: "Ayor Landing Pages",
     primaryOffer: "Free 7-day agentic build sprint + unlimited niche templates",
     targetAudienceDescription: "Founders, marketers, and product teams across SaaS, eCommerce, services, and emerging niches",
     buyerPersonaKeywords: "agentic AI, landing page builder, GPT-5, multi-niche, autonomous generation",
@@ -2369,7 +2369,7 @@ const DUMMY_DATA_SETS = [
     logoUpload: null,
     faviconUpload: null,
     videoURL: "",
-    privacyPolicyURL: "https://caelum.ai/privacy",
+    privacyPolicyURL: "https://ayorlandingpages.com/privacy",
     gdprCcpaConsentText: "I agree to receive agentic build updates.",
     formFieldsConfig: "Name, Email, Company, Use Case",
     analyticsIDs: "GA ID: G-CAELOM, GTM ID: GTM-CAE01",

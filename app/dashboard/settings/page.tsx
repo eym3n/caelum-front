@@ -23,7 +23,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Account settings</h1>
         <p className="text-sm text-muted-foreground">
-          Update your profile details or sign out of caelum.ai.
+          Update your profile details or sign out of Ayor Landing Pages.
         </p>
       </div>
 

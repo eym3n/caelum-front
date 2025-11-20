@@ -25,8 +25,8 @@ export default function Home() {
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 pt-6">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="caelum.ai" width={28} height={28} />
-            <span className="text-sm font-semibold tracking-tight">caelum.ai</span>
+            <Image src="/logo.svg" alt="Ayor Landing Pages logo" width={28} height={28} />
+            <span className="text-sm font-semibold tracking-tight">Ayor Landing Pages</span>
           </div>
           <div className="flex items-center gap-2">
             {initialized && user ? (
@@ -67,7 +67,7 @@ export default function Home() {
               <span className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">to Life</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8">
-              Describe your product. caelum.ai plans, writes, designs, and assembles a conversion‑ready landing page—
+              Describe your product. Ayor Landing Pages plans, writes, designs, and assembles a conversion‑ready landing page—
               then lets you tweak everything before deploying.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -109,9 +109,9 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <div className="size-8 rounded-full border border-border/60 grid place-items-center">
-                      <Image src="/logo.svg" alt="caelum.ai" width={16} height={16} />
+                      <Image src="/logo.svg" alt="Ayor Landing Pages logo" width={16} height={16} />
                     </div>
-                    <span className="text-sm font-medium">caelum.ai Builder</span>
+                    <span className="text-sm font-medium">Ayor Landing Pages Builder</span>
                   </div>
                   <div className="text-[10px] px-2 py-1 rounded-full bg-accent border border-border/60 text-accent-foreground">Live</div>
                 </div>

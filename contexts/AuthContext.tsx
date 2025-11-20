@@ -12,9 +12,9 @@ import {
 import { useAppDispatch } from "@/store/hooks";
 import { clearUser as clearUserAction, setUser as setUserAction } from "@/store/user/userSlice";
 
-const ACCESS_TOKEN_KEY = "caelum.auth.accessToken";
-const REFRESH_TOKEN_KEY = "caelum.auth.refreshToken";
-const USER_KEY = "caelum.auth.user";
+const ACCESS_TOKEN_KEY = "ayorLandingPages.auth.accessToken";
+const REFRESH_TOKEN_KEY = "ayorLandingPages.auth.refreshToken";
+const USER_KEY = "ayorLandingPages.auth.user";
 
 type LoginArgs = {
   email: string;

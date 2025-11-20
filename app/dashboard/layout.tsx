@@ -81,14 +81,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span className="grid size-9 shrink-0 place-items-center rounded-full">
                   <Image
                     src="/logo.svg"
-                    alt="caelum.ai"
+                    alt="Ayor Landing Pages logo"
                     width={28}
                     height={28}
                     className="size-7 object-contain"
                   />
                 </span>
                 <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="text-xs tracking-wider text-muted-foreground">caelum.ai</span>
+                  <span className="text-xs tracking-wider text-muted-foreground">Ayor Landing Pages</span>
                 </div>
               </Link>
             </SidebarHeader>

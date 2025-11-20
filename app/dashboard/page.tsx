@@ -73,7 +73,7 @@ export default function DashboardHomePage() {
         <div className="absolute inset-0 hidden dark:block bg-black/30" />
         <div className="relative z-10 flex flex-col gap-8 overflow-hidden rounded-xl px-8 py-10 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-4">
-            <p className="text-sm uppercase tracking-[0.3em] text-white/80">caelum.ai Studio</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-white/80">Ayor Landing Pages Studio</p>
             <h1 className="text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
               {user?.full_name?.length ? `Welcome back, ${user.full_name}` : "Welcome back"}
             </h1>

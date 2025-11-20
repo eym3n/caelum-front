@@ -343,7 +343,7 @@ export function SectionSelector({
             <div>
               <h3 className="text-sm font-semibold text-foreground">Custom Sections</h3>
               <p className="text-[11px] text-muted-foreground">
-                Define unique blocks like comparisons, galleries, FAQs, or anything else you want caelum.ai to generate.
+                Define unique blocks like comparisons, galleries, FAQs, or anything else you want Ayor Landing Pages to generate.
               </p>
             </div>
           </div>
@@ -584,7 +584,7 @@ export function SectionSelector({
               {editingCustomIndex === null ? "Add Custom Section" : "Edit Custom Section"}
             </DialogTitle>
             <DialogDescription>
-              Name and describe a custom section you want caelum.ai to generate on your page.
+              Name and describe a custom section you want Ayor Landing Pages to generate on your page.
             </DialogDescription>
           </DialogHeader>
 
@@ -609,7 +609,7 @@ export function SectionSelector({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="custom-notes">Detailed notes for caelum.ai (optional)</Label>
+              <Label htmlFor="custom-notes">Detailed notes for Ayor Landing Pages (optional)</Label>
               <Textarea
                 id="custom-notes"
                 value={customDraft.notes}
