@@ -115,42 +115,80 @@ export default function LivePreview({ sessionId, enabled, refreshToken, onFirstR
   }, []);
 
   // Fetch files from the API
-  const fetchFiles = useCallback(async (force = false) => {
-    // If we already have the file tree and not forcing, skip network
-    if (fileTree && !force) {
-      appendLog("⏭ Using cached file tree (skip fetch)");
-      return fileTree;
-    }
-    setStatus("fetching");
-    setError(null);
-    try {
-      const response = await authorizedFetch(
-        `${API_BASE_URL}/v1/files/get-files`,
-        {
-          method: "GET",
-          headers: {
-            "x-session-id": sessionId,
-          },
+  const fetchFiles = useCallback(
+    async (force = false) => {
+      // If we already have the file tree and not forcing, skip network
+      if (fileTree && !force) {
+        appendLog("⏭ Using cached file tree (skip fetch)");
+        return fileTree;
+      }
+
+      const maxAttempts = 10;
+      const retryDelayMs = 2500;
+
+      setStatus("fetching");
+      setError(null);
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const response = await authorizedFetch(
+            `${API_BASE_URL}/v1/files/get-files`,
+            {
+              method: "GET",
+              headers: {
+                "x-session-id": sessionId,
+              },
+            }
+          );
+
+          if (response.status === 404) {
+            appendLog(
+              `⚠ Files not ready yet (attempt ${attempt}/${maxAttempts}). Retrying in ${
+                retryDelayMs / 1000
+              }s...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
+
+          if (!response.ok) {
+            throw new Error(
+              `API request failed: ${response.status} ${response.statusText}`
+            );
+          }
+
+          const data = await response.json();
+          if (!data.files) {
+            throw new Error("Invalid API response: missing 'files' property");
+          }
+          const tree = parseToFileSystemTree(data.files);
+          setFileTree(tree);
+          appendLog("✓ Files fetched and parsed successfully");
+          return tree;
+        } catch (e: any) {
+          const message = e?.message || String(e);
+
+          if (attempt < maxAttempts) {
+            appendLog(
+              `⚠ Fetch error (attempt ${attempt}/${maxAttempts}): ${message}. Retrying in ${
+                retryDelayMs / 1000
+              }s...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
+
+          setStatus("error");
+          setError(message);
+          appendLog(`✗ Fetch error: ${message}`);
+          return null;
         }
-      );
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
       }
-      const data = await response.json();
-      if (!data.files) {
-        throw new Error("Invalid API response: missing 'files' property");
-      }
-      const tree = parseToFileSystemTree(data.files);
-      setFileTree(tree);
-      appendLog("✓ Files fetched and parsed successfully");
-      return tree;
-    } catch (e: any) {
-      setStatus("error");
-      setError(e.message || String(e));
-      appendLog(`✗ Fetch error: ${e.message}`);
+
       return null;
-    }
-  }, [sessionId, fileTree, authorizedFetch]);
+    },
+    [sessionId, fileTree, authorizedFetch]
+  );
 
   const killProcesses = () => {
     try {
