@@ -90,7 +90,13 @@ export default function BuilderPage() {
       sessionId,
       routeSessionId,
     })
-    start({ payload })
+    start({ 
+      payload,
+      onJobComplete: () => {
+        console.log('[builder] Init job completed, refreshing preview')
+        setPreviewRefresh((r) => r + 1)
+      }
+    })
   }, [status, start, payload, routeSessionId])
 
   // Compute tool status for preview pane toast
@@ -302,6 +308,10 @@ export default function BuilderPage() {
                 setIsFollowUpStreaming(active)
               }}
               onDoneSignal={handleFollowUpDone}
+              onJobComplete={() => {
+                console.log('[builder] Chat job completed, refreshing preview')
+                setPreviewRefresh((r) => r + 1)
+              }}
               // Removed onChatProgress to stop auto preview refresh
             />
         </div>

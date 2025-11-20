@@ -55,11 +55,12 @@ interface Props {
   onToolMessage?: (text: string) => void
   onChatProgress?: () => void
   onDoneSignal?: () => void
+  onJobComplete?: () => void
 }
 
 // Deprecated: previous single-bubble processed message approach removed.
 
-export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage, onChatProgress, onDoneSignal }: Props) {
+export function ChatPane({ messages, status, onRestart, sessionId, error, onDeploySuccess, onChatStreamState, onToolMessage, onChatProgress, onDoneSignal, onJobComplete }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploySuccess, setDeploySuccess] = useState(false)
@@ -259,6 +260,11 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
             setIsChatStreaming(false)
             if (onChatStreamState) onChatStreamState(false)
             notifyDone()
+            // Refresh preview when job completes
+            if (job.status === 'completed' && onJobComplete) {
+              console.log('[ChatPane] Job completed, triggering preview refresh')
+              onJobComplete()
+            }
             break
           }
         } catch (err) {

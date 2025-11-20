@@ -9,6 +9,7 @@ interface StartOptions {
   payload: any // root object to send directly (now includes image URLs, not File objects)
   // files deprecated: initialization endpoint now expects URLs only
   endpoint?: string
+  onJobComplete?: () => void
 }
 
 function toList(value: unknown): string | undefined {
@@ -91,7 +92,7 @@ export function useStreamSession(externalSessionId?: string) {
   }, [externalSessionId])
 
   const start = useCallback(
-    async ({ payload, endpoint = `${API_BASE_URL}/v1/agent/init` }: StartOptions) => {
+    async ({ payload, endpoint = `${API_BASE_URL}/v1/agent/init`, onJobComplete }: StartOptions) => {
       if (startedRef.current) return
       startedRef.current = true
 
@@ -204,6 +205,11 @@ export function useStreamSession(externalSessionId?: string) {
               })
 
               if (job && ['completed', 'failed', 'cancelled'].includes(job.status)) {
+                // Refresh preview when init job completes
+                if (job.status === 'completed' && onJobComplete) {
+                  console.log('[useStreamSession] Init job completed, triggering preview refresh')
+                  onJobComplete()
+                }
                 controller.abort()
                 abortRef.current = null
                 return
