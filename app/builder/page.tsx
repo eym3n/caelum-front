@@ -161,7 +161,8 @@ export default function BuilderPage() {
   )
 
   const hasRouteSession = typeof routeSessionId === 'string' && routeSessionId.length > 0
-  const previewEnabled = hasFirstStreamedEvent || (!payload && hasRouteSession)
+  const previewEnabled =
+    hasFirstStreamedEvent || pendingPreviewRefresh || (!payload && hasRouteSession)
 
   // Reset preview-ready metadata when a new session starts
   useEffect(() => {
