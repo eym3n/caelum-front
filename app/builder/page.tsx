@@ -9,7 +9,7 @@ import { ResizeHandle } from '@/components/chat/ResizeHandle'
 import type { StreamMessage } from '@/components/chat/types'
 import { usePayload } from '@/contexts/PayloadContext'
 import Image from 'next/image'
-import { Smartphone, Maximize2, Minimize2, Moon, Sun } from 'lucide-react'
+import { Smartphone, Maximize2, Minimize2, Moon, Sun, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 
@@ -209,6 +209,13 @@ export default function BuilderPage() {
                 <Sun className="w-4 h-4" />
               )}
             </Button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-xs rounded-md px-3 py-1.5 bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Dashboard
+            </button>
             <button
               onClick={() => router.push('/create')}
               className="text-xs rounded-md px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
