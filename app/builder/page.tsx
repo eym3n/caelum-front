@@ -34,6 +34,7 @@ export default function BuilderPage() {
   // Ensure we only auto-refresh once per builder session
   const [autoRefreshedSessionId, setAutoRefreshedSessionId] = useState<string | null>(null)
   const [pendingPreviewRefresh, setPendingPreviewRefresh] = useState(false)
+  const [previewEnabled, setPreviewEnabled] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -161,14 +162,23 @@ export default function BuilderPage() {
   )
 
   const hasRouteSession = typeof routeSessionId === 'string' && routeSessionId.length > 0
-  const previewEnabled =
-    hasFirstStreamedEvent || pendingPreviewRefresh || (!payload && hasRouteSession)
+
+  useEffect(() => {
+    if (
+      hasFirstStreamedEvent ||
+      pendingPreviewRefresh ||
+      (!payload && hasRouteSession)
+    ) {
+      setPreviewEnabled(true)
+    }
+  }, [hasFirstStreamedEvent, pendingPreviewRefresh, payload, hasRouteSession])
 
   // Reset preview-ready metadata when a new session starts
   useEffect(() => {
     setPreviewReady(false)
     setAutoRefreshedSessionId(null)
     setPendingPreviewRefresh(false)
+    setPreviewEnabled(false)
   }, [sessionId])
 
   // Auto-refresh the live preview exactly once per session when the coder reports
