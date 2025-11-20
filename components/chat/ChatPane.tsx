@@ -72,14 +72,9 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
   const { authorizedFetch } = useAuth()
 
   const handleDeploy = async () => {
-    // Send "Deploy landing page" as a chat message
+    // Send "Deploy landing page" as a chat message without user interaction
     if (isChatStreaming || status === 'initializing' || status === 'streaming') return
-    
-    setChatInput('Deploy landing page')
-    // Use setTimeout to ensure the input is set before sending
-    setTimeout(() => {
-      sendFollowUp()
-    }, 0)
+    void sendFollowUp('Deploy landing page')
   }
 
   useEffect(() => {
@@ -145,8 +140,8 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
     bottomRef.current.scrollIntoView({ behavior: isChatStreaming ? 'auto' : 'smooth', block: 'end' })
   }, [conversation, isChatStreaming])
 
-  const sendFollowUp = async () => {
-    const message = chatInput.trim()
+  const sendFollowUp = async (overrideMessage?: string) => {
+    const message = (overrideMessage ?? chatInput).trim()
     if (!message || isChatStreaming) return
 
     console.log('[chat] sending follow-up', { sessionId, message })
@@ -366,7 +361,9 @@ export function ChatPane({ messages, status, onRestart, sessionId, error, onDepl
             rows={1}
           />
           <button
-            onClick={sendFollowUp}
+            onClick={() => {
+              void sendFollowUp()
+            }}
             disabled={!chatInput.trim()}
             className="h-10 px-5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >Send</button>

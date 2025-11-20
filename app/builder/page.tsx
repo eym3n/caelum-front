@@ -33,6 +33,7 @@ export default function BuilderPage() {
   const [previewReady, setPreviewReady] = useState(false)
   // Ensure we only auto-refresh once per builder session
   const [autoRefreshedSessionId, setAutoRefreshedSessionId] = useState<string | null>(null)
+  const [pendingPreviewRefresh, setPendingPreviewRefresh] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -59,14 +60,36 @@ export default function BuilderPage() {
     window.localStorage.setItem('builder:ratio', ratio.toString())
   }, [ratio])
 
-  const handleFollowUpDone = React.useCallback(() => {
+  const requestPreviewRefresh = React.useCallback(
+    (reason: string) => {
+      if (!previewReady) {
+        console.log('[builder] Preview not ready yet; queuing refresh', {
+          sessionId,
+          reason,
+        })
+        setPendingPreviewRefresh(true)
+        return
+      }
+      console.log('[builder] Auto-refreshing preview', {
+        sessionId,
+        reason,
+      })
+      setPreviewRefresh((r) => r + 1)
+    },
+    [previewReady, sessionId],
+  )
+
+  useEffect(() => {
     if (!previewReady) return
-    console.log('[builder] Auto-refreshing preview after follow-up done signal', {
-      sessionId,
-      previewReady,
-    })
+    if (!pendingPreviewRefresh) return
+    console.log('[builder] Fulfilling queued preview refresh', { sessionId })
+    setPendingPreviewRefresh(false)
     setPreviewRefresh((r) => r + 1)
-  }, [previewReady, sessionId])
+  }, [pendingPreviewRefresh, previewReady, sessionId])
+
+  const handleFollowUpDone = React.useCallback(() => {
+    requestPreviewRefresh('follow-up done signal')
+  }, [requestPreviewRefresh])
 
   useEffect(() => {
     if (!routeSessionId) return
@@ -90,14 +113,13 @@ export default function BuilderPage() {
       sessionId,
       routeSessionId,
     })
-    start({ 
+    start({
       payload,
       onJobComplete: () => {
-        console.log('[builder] Init job completed, refreshing preview')
-        setPreviewRefresh((r) => r + 1)
-      }
+        requestPreviewRefresh('init job completed')
+      },
     })
-  }, [status, start, payload, routeSessionId])
+  }, [status, start, payload, routeSessionId, requestPreviewRefresh])
 
   // Compute tool status for preview pane toast
   const toolStatus = useMemo(() => {
@@ -145,13 +167,13 @@ export default function BuilderPage() {
   useEffect(() => {
     setPreviewReady(false)
     setAutoRefreshedSessionId(null)
+    setPendingPreviewRefresh(false)
   }, [sessionId])
 
   // Auto-refresh the live preview exactly once per session when the coder reports
   // "Implemented landing page". This waits until the preview environment has
   // successfully booted at least once to avoid interrupting the initial install/start.
   useEffect(() => {
-    if (!previewReady) return
     if (autoRefreshedSessionId === sessionId) return
     const hasImplementedEvent = messages.some(
       (m) =>
@@ -161,15 +183,9 @@ export default function BuilderPage() {
     )
     if (!hasImplementedEvent) return
 
-    console.log('[builder] Auto-refreshing preview on coder implementation event', {
-      sessionId,
-      previewReady,
-      hasImplementedEvent,
-    })
-
-    setPreviewRefresh((r) => r + 1)
+    requestPreviewRefresh('coder implementation event')
     setAutoRefreshedSessionId(sessionId)
-  }, [messages, previewReady, autoRefreshedSessionId, sessionId])
+  }, [messages, autoRefreshedSessionId, sessionId, requestPreviewRefresh])
 
   return (
     <AuthGuard>
@@ -316,8 +332,7 @@ export default function BuilderPage() {
               }}
               onDoneSignal={handleFollowUpDone}
               onJobComplete={() => {
-                console.log('[builder] Chat job completed, refreshing preview')
-                setPreviewRefresh((r) => r + 1)
+                requestPreviewRefresh('chat job completed')
               }}
               // Removed onChatProgress to stop auto preview refresh
             />
