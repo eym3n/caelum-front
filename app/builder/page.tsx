@@ -164,6 +164,13 @@ export default function BuilderPage() {
   const hasRouteSession = typeof routeSessionId === 'string' && routeSessionId.length > 0
 
   useEffect(() => {
+    setPreviewReady(false)
+    setAutoRefreshedSessionId(null)
+    setPendingPreviewRefresh(false)
+    setPreviewEnabled(false)
+  }, [sessionId])
+
+  useEffect(() => {
     if (
       hasFirstStreamedEvent ||
       pendingPreviewRefresh ||
@@ -171,15 +178,7 @@ export default function BuilderPage() {
     ) {
       setPreviewEnabled(true)
     }
-  }, [hasFirstStreamedEvent, pendingPreviewRefresh, payload, hasRouteSession])
-
-  // Reset preview-ready metadata when a new session starts
-  useEffect(() => {
-    setPreviewReady(false)
-    setAutoRefreshedSessionId(null)
-    setPendingPreviewRefresh(false)
-    setPreviewEnabled(false)
-  }, [sessionId])
+  }, [hasFirstStreamedEvent, pendingPreviewRefresh, payload, hasRouteSession, sessionId])
 
   // Auto-refresh the live preview exactly once per session when the coder reports
   // "Implemented landing page". This waits until the preview environment has
