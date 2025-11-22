@@ -153,57 +153,67 @@ export default function DashboardHomePage() {
           )}
           {!loading && !error && latest.length > 0 && (
             <div className="divide-y divide-border/70">
-              {latest.map((page) => (
-                <div
-                  key={page.id}
-                  className="grid gap-4 px-6 py-4 sm:grid-cols-[1.2fr_1fr_1fr_auto] sm:items-center"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      Session <span className="font-mono text-xs text-muted-foreground">{page.session_id}</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">Updated {formatDate(page.updated_at)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={statusVariant(page.status)} className="text-xs capitalize">
-                      {page.status}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {page.deployment_url ? (
-                      <Link
-                        href={page.deployment_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              {latest.map((page) => {
+                const productName =
+                  page.business_data?.campaign?.productName?.trim() || "Untitled landing page";
+                const objective = page.business_data?.campaign?.objective?.trim() || null;
+                const theme = page.business_data?.branding?.theme?.trim() || null;
+                return (
+                  <div
+                    key={page.id}
+                    className="grid gap-4 px-6 py-4 sm:grid-cols-[1.6fr_auto_auto_auto] sm:items-center"
+                  >
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-foreground">{productName}</p>
+                      {objective && (
+                        <p className="text-xs text-muted-foreground line-clamp-2">{objective}</p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wide text-muted-foreground/80">
+                        <span>Updated {formatDate(page.updated_at)}</span>
+                        {theme && <span>Theme: {theme}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={statusVariant(page.status)} className="text-xs capitalize">
+                        {page.status}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {page.deployment_url ? (
+                        <Link
+                          href={page.deployment_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                        >
+                          View deployment <ExternalLink className="size-3.5" />
+                        </Link>
+                      ) : (
+                        <span className="italic text-muted-foreground/80">Deployment pending</span>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/builder/${encodeURIComponent(page.session_id)}`}>Open builder</Link>
+                      </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        disabled={!page.deployment_url}
+                        variant={page.deployment_url ? "secondary" : "outline"}
                       >
-                        View deployment <ExternalLink className="size-3.5" />
-                      </Link>
-                    ) : (
-                      <span className="italic text-muted-foreground/80">Deployment pending</span>
-                    )}
+                        <Link
+                          href={page.deployment_url || "#"}
+                          target={page.deployment_url ? "_blank" : undefined}
+                          rel="noopener noreferrer"
+                        >
+                          Visit site
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/builder/${encodeURIComponent(page.session_id)}`}>Open builder</Link>
-                    </Button>
-                    <Button
-                      asChild
-                      size="sm"
-                      disabled={!page.deployment_url}
-                      variant={page.deployment_url ? "secondary" : "outline"}
-                    >
-                      <Link
-                        href={page.deployment_url || "#"}
-                        target={page.deployment_url ? "_blank" : undefined}
-                        rel="noopener noreferrer"
-                      >
-                        Visit site
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
@@ -255,7 +265,7 @@ function StatusPill({
     <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-muted/40 px-4 py-3">
       <div className="space-y-1">
         <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{percentage}% of total sessions</p>
+        <p className="text-xs text-muted-foreground">{percentage}% of landing pages</p>
       </div>
       <Badge
         variant={tone === "success" ? "secondary" : tone === "alert" ? "destructive" : "outline"}
