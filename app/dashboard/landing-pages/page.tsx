@@ -51,6 +51,21 @@ function arrayFrom<T = unknown>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function injectBaseHref(html: string, absoluteUrl: string): string {
+  if (!absoluteUrl) return html;
+  if (/<base\s/i.test(html)) return html;
+
+  const baseHref = absoluteUrl.replace(/[^/]*$/, "") || absoluteUrl;
+  const baseTag = `<base href="${baseHref}" />`;
+  const headTagRegex = /<head(\s[^>]*)?>/i;
+
+  if (headTagRegex.test(html)) {
+    return html.replace(headTagRegex, (match) => `${match}${baseTag}`);
+  }
+
+  return `${baseTag}${html}`;
+}
+
 function DetailsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
@@ -109,6 +124,50 @@ function LandingPageCard({ page, expanded, onToggle }: LandingPageCardProps) {
   }>(sectionData?.["testimonials"]);
   const hasPdf = Boolean(page.design_blueprint_pdf_url);
   const updatedAt = formatDate(page.updated_at);
+
+  const [previewState, setPreviewState] = React.useState<
+    "idle" | "loading" | "ready" | "error"
+  >(previewSrc ? "loading" : "idle");
+  const [previewDoc, setPreviewDoc] = React.useState<string | null>(null);
+  const [previewError, setPreviewError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!previewSrc) {
+      setPreviewState("idle");
+      setPreviewDoc(null);
+      setPreviewError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewState("loading");
+    setPreviewDoc(null);
+    setPreviewError(null);
+
+    (async () => {
+      try {
+        const response = await fetch(previewSrc, { cache: "no-cache" });
+        if (!response.ok) {
+          throw new Error(`Request failed (${response.status})`);
+        }
+        const html = await response.text();
+        if (cancelled) return;
+        setPreviewDoc(injectBaseHref(html, previewSrc));
+        setPreviewState("ready");
+      } catch (error) {
+        if (cancelled) return;
+        setPreviewState("error");
+        setPreviewDoc(null);
+        setPreviewError(
+          error instanceof Error ? error.message : "Unable to load preview"
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [previewSrc]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -503,15 +562,44 @@ function LandingPageCard({ page, expanded, onToggle }: LandingPageCardProps) {
         {previewSrc ? (
           <div className="relative overflow-hidden rounded-xl border border-border/60 bg-black/60">
             <div className="relative h-44 w-full">
-              <iframe
-                src={previewSrc}
-                title={`Preview of ${productName}`}
-                loading="lazy"
-                className="h-full w-full border-0"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock"
-                referrerPolicy="no-referrer"
-                style={{ pointerEvents: "none" }}
-              />
+              {previewState !== "error" ? (
+                <iframe
+                  key={previewState === "ready" ? page.id : `${page.id}-loading`}
+                  srcDoc={previewDoc ?? undefined}
+                  title={`Preview of ${productName}`}
+                  loading="lazy"
+                  className="h-full w-full border-0"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock"
+                  referrerPolicy="no-referrer"
+                  style={{ pointerEvents: "none", backgroundColor: "#111" }}
+                />
+              ) : (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-background/60 px-4 text-center">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Preview unavailable.{" "}
+                    <button
+                      type="button"
+                      className="text-primary underline-offset-2 hover:underline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (previewSrc) {
+                          window.open(previewSrc, "_blank", "noopener,noreferrer");
+                        }
+                      }}
+                    >
+                      Open in new tab
+                    </button>
+                  </p>
+                  {previewError && (
+                    <p className="text-[11px] text-muted-foreground/70">{previewError}</p>
+                  )}
+                </div>
+              )}
+              {previewState === "loading" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <Loader2 className="h-5 w-5 animate-spin text-white/80" />
+                </div>
+              )}
             </div>
             <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-white">
               <MonitorPlay className="h-3.5 w-3.5" />
