@@ -4,12 +4,12 @@ import { useRouter, useParams } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useStreamSession } from '@/components/chat/useStreamSession'
 import { ChatPane } from '@/components/chat/ChatPane'
-import LivePreview from '@/components/chat/LivePreview'
+import LivePreview, { type LivePreviewHandle } from '@/components/chat/LivePreview'
 import { ResizeHandle } from '@/components/chat/ResizeHandle'
 import type { StreamMessage } from '@/components/chat/types'
 import { usePayload } from '@/contexts/PayloadContext'
 import Image from 'next/image'
-import { Smartphone, Maximize2, Minimize2, Moon, Sun, ArrowLeft } from 'lucide-react'
+import { Smartphone, Maximize2, Minimize2, Moon, Sun, ArrowLeft, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 
@@ -22,6 +22,7 @@ export default function BuilderPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const livePreviewRef = React.useRef<LivePreviewHandle | null>(null)
   const [ratio, setRatio] = useState<number>(0.65)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const prevRatioRef = React.useRef<number>(0.65)
@@ -35,6 +36,7 @@ export default function BuilderPage() {
   const [autoRefreshedSessionId, setAutoRefreshedSessionId] = useState<string | null>(null)
   const [pendingPreviewRefresh, setPendingPreviewRefresh] = useState(false)
   const [previewEnabled, setPreviewEnabled] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -79,6 +81,39 @@ export default function BuilderPage() {
     },
     [previewReady, sessionId],
   )
+
+  const handleExport = React.useCallback(async () => {
+    if (!livePreviewRef.current) {
+      console.warn('[builder] Export requested but preview is not ready yet.')
+      return
+    }
+    try {
+      setIsExporting(true)
+      const data = await livePreviewRef.current.exportProject('/')
+      if (!data || data.length === 0) {
+        throw new Error('No data returned from export')
+      }
+      const blob = new Blob([data], { type: 'application/zip' })
+      const filenameBase = sessionId || routeSessionId || 'landing-page'
+      const filename = `landing-page-${filenameBase}.zip`
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename
+      document.body.appendChild(anchor)
+      anchor.click()
+      document.body.removeChild(anchor)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      console.log('[builder] Export completed', { filename })
+    } catch (err) {
+      console.error('[builder] Failed to export preview', err)
+      if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+        window.alert('Unable to export the preview files right now. Please try again in a moment.')
+      }
+    } finally {
+      setIsExporting(false)
+    }
+  }, [sessionId, routeSessionId])
 
   useEffect(() => {
     if (!previewReady) return
@@ -285,6 +320,14 @@ export default function BuilderPage() {
                 {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
               </button>
               <button
+                onClick={handleExport}
+                disabled={!previewEnabled || isExporting}
+                className="text-xs flex items-center gap-1.5 rounded-md px-3 py-1.5 border border-(--color-border) bg-background hover:bg-(--color-card) disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {isExporting ? 'Exporting…' : 'Export zip'}
+              </button>
+              <button
                 onClick={() => {
                   console.log('[Builder] Refresh button clicked', { hasFirstStreamedEvent, currentRefresh: previewRefresh });
                   setPreviewRefresh(r => {
@@ -301,6 +344,7 @@ export default function BuilderPage() {
           <div className="relative flex-1 min-h-0">
             {/* Manual refresh only; no auto reload */}
             <LivePreview
+              ref={livePreviewRef}
               sessionId={sessionId}
               enabled={previewEnabled}
               refreshToken={previewRefresh}

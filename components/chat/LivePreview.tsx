@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { WebContainer, FileSystemTree } from "@webcontainer/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE_URL } from "@/lib/config";
@@ -26,6 +33,10 @@ interface LivePreviewProps {
    */
   onFirstReady?: () => void;
 }
+
+export type LivePreviewHandle = {
+  exportProject: (path?: string) => Promise<Uint8Array | null>;
+};
 
 /**
  * Recursively converts the API response structure into a WebContainer FileSystemTree.
@@ -54,7 +65,8 @@ function parseToFileSystemTree(obj: any): FileSystemTree {
 // Global WebContainer instance storage to survive hot reloads and component remounts
 let globalWebContainerInstance: WebContainer | null = null;
 
-export default function LivePreview({ sessionId, enabled, refreshToken, onFirstReady }: LivePreviewProps) {
+const LivePreview = forwardRef<LivePreviewHandle, LivePreviewProps>(
+  ({ sessionId, enabled, refreshToken, onFirstReady }, ref) => {
   const wcRef = useRef<WebContainer | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -338,6 +350,37 @@ export default function LivePreview({ sessionId, enabled, refreshToken, onFirstR
     fetchFilesRef.current = fetchFiles;
     ensureBootRef.current = ensureBoot;
   }, [fetchFiles, ensureBoot]);
+
+  const exportProject = useCallback(
+    async (path = "/") => {
+      try {
+        const wc = await ensureBoot();
+        if (!wc) throw new Error("WebContainer instance not available");
+        appendLog(`⬇️ Exporting workspace at "${path}"...`);
+        const data = await wc.export(path, { format: "zip" });
+        if (!(data instanceof Uint8Array)) {
+          appendLog("⚠ Export did not return zip data. Converting result to JSON.");
+          const json = JSON.stringify(data, null, 2);
+          return new TextEncoder().encode(json);
+        }
+        appendLog("✓ Export completed successfully");
+        return data;
+      } catch (e: any) {
+        const message = e?.message || String(e);
+        appendLog(`✗ Export failed: ${message}`);
+        throw e;
+      }
+    },
+    [ensureBoot]
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      exportProject,
+    }),
+    [exportProject]
+  );
 
   // Start the WebContainer with fetched files
   const start = useCallback(async () => {
@@ -843,4 +886,7 @@ export default function LivePreview({ sessionId, enabled, refreshToken, onFirstR
       )}
     </div>
   );
-}
+  }
+);
+
+export default LivePreview;
