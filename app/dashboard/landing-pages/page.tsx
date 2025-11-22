@@ -11,7 +11,6 @@ import {
   FileCode,
   Globe,
   Loader2,
-  MonitorPlay,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,19 +50,35 @@ function arrayFrom<T = unknown>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
-function injectBaseHref(html: string, absoluteUrl: string): string {
-  if (!absoluteUrl) return html;
-  if (/<base\s/i.test(html)) return html;
+const GRADIENT_PALETTES: Array<[string, string, string]> = [
+  ["#7C3AED", "#4338CA", "#2563EB"],
+  ["#F97316", "#EA580C", "#DB2777"],
+  ["#0EA5E9", "#6366F1", "#8B5CF6"],
+  ["#22C55E", "#10B981", "#14B8A6"],
+  ["#F59E0B", "#EF4444", "#EC4899"],
+  ["#9333EA", "#4C1D95", "#2563EB"],
+  ["#14B8A6", "#06B6D4", "#3B82F6"],
+  ["#F43F5E", "#EC4899", "#8B5CF6"],
+];
 
-  const baseHref = absoluteUrl.replace(/[^/]*$/, "") || absoluteUrl;
-  const baseTag = `<base href="${baseHref}" />`;
-  const headTagRegex = /<head(\s[^>]*)?>/i;
+const GRADIENT_ANGLES = ["130deg", "145deg", "160deg", "210deg"];
 
-  if (headTagRegex.test(html)) {
-    return html.replace(headTagRegex, (match) => `${match}${baseTag}`);
+function hashString(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
   }
+  return hash;
+}
 
-  return `${baseTag}${html}`;
+function gradientForName(name: string): React.CSSProperties {
+  const hash = hashString(name || "landing-page");
+  const palette = GRADIENT_PALETTES[Math.abs(hash) % GRADIENT_PALETTES.length];
+  const angle = GRADIENT_ANGLES[Math.abs(hash) % GRADIENT_ANGLES.length];
+
+  return {
+    backgroundImage: `linear-gradient(${angle}, ${palette[0]}, ${palette[1]}, ${palette[2]})`,
+  };
 }
 
 function DetailsSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -92,7 +107,7 @@ function LandingPageCard({ page, expanded, onToggle }: LandingPageCardProps) {
   const personaKeywords = page.business_data?.audience?.personaKeywords ?? [];
   const audienceDescription = page.business_data?.audience?.description?.trim() || null;
   const uvp = page.business_data?.audience?.uvp?.trim() || null;
-  const previewSrc = page.preview_url || page.deployment_url || null;
+  const previewUrl = page.preview_url || page.deployment_url || null;
   const benefits = page.business_data?.benefits ?? {};
   const topBenefits = benefits.topBenefits ?? [];
   const features = benefits.features ?? [];
@@ -125,49 +140,7 @@ function LandingPageCard({ page, expanded, onToggle }: LandingPageCardProps) {
   const hasPdf = Boolean(page.design_blueprint_pdf_url);
   const updatedAt = formatDate(page.updated_at);
 
-  const [previewState, setPreviewState] = React.useState<
-    "idle" | "loading" | "ready" | "error"
-  >(previewSrc ? "loading" : "idle");
-  const [previewDoc, setPreviewDoc] = React.useState<string | null>(null);
-  const [previewError, setPreviewError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!previewSrc) {
-      setPreviewState("idle");
-      setPreviewDoc(null);
-      setPreviewError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setPreviewState("loading");
-    setPreviewDoc(null);
-    setPreviewError(null);
-
-    (async () => {
-      try {
-        const response = await fetch(previewSrc, { cache: "no-cache" });
-        if (!response.ok) {
-          throw new Error(`Request failed (${response.status})`);
-        }
-        const html = await response.text();
-        if (cancelled) return;
-        setPreviewDoc(injectBaseHref(html, previewSrc));
-        setPreviewState("ready");
-      } catch (error) {
-        if (cancelled) return;
-        setPreviewState("error");
-        setPreviewDoc(null);
-        setPreviewError(
-          error instanceof Error ? error.message : "Unable to load preview"
-        );
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [previewSrc]);
+  const gradientStyle = React.useMemo(() => gradientForName(productName), [productName]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -507,193 +480,177 @@ function LandingPageCard({ page, expanded, onToggle }: LandingPageCardProps) {
         expanded && "border-primary/60 bg-card"
       )}
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">{productName}</h2>
-              <Badge variant={statusVariant(page.status)} className="capitalize">
-                {page.status}
-              </Badge>
-              {theme && (
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-primary/40 text-xs text-primary"
-                >
-                  Theme: {theme}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+        <div className="w-full flex-shrink-0 lg:w-[280px]">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 shadow-sm">
+            <div className="absolute inset-0" style={gradientStyle} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/25 to-transparent" />
+            <div className="relative z-10 flex h-full flex-col justify-between p-5 text-white">
+              <p className="text-[11px] uppercase tracking-[0.4em] text-white/70">Product</p>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold leading-tight">{productName}</h2>
+                {(primaryOffer || objective) && (
+                  <p className="text-sm text-white/85 line-clamp-3">
+                    {primaryOffer || objective}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={statusVariant(page.status)} className="capitalize">
+                  {page.status}
                 </Badge>
-              )}
-            </div>
-            {objective && !expanded && (
-              <p className="line-clamp-2 text-sm text-muted-foreground">{objective}</p>
-            )}
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Updated {updatedAt}</span>
-              {page.deployment_url && (
-                <span className="inline-flex items-center gap-1">
-                  <Globe className="h-3.5 w-3.5 text-primary" />
-                  Live deployment ready
-                </span>
-              )}
-            </div>
-            {personaKeywords.length > 0 && !expanded && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {personaKeywords.slice(0, 4).map((keyword) => (
-                  <Badge key={keyword} variant="secondary" className="rounded-full text-xs">
-                    {keyword}
-                  </Badge>
-                ))}
-                {personaKeywords.length > 4 && (
-                  <Badge variant="outline" className="rounded-full text-xs">
-                    +{personaKeywords.length - 4} more
+                {theme && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-primary/40 text-xs text-primary"
+                  >
+                    Theme: {theme}
                   </Badge>
                 )}
               </div>
-            )}
-          </div>
-          <ChevronDown
-            className={cn(
-              "h-5 w-5 flex-shrink-0 text-muted-foreground transition-transform duration-300",
-              expanded && "rotate-180"
-            )}
-          />
-        </div>
-
-        {previewSrc ? (
-          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-black/60">
-            <div className="relative h-44 w-full">
-              {previewState !== "error" ? (
-                <iframe
-                  key={previewState === "ready" ? page.id : `${page.id}-loading`}
-                  srcDoc={previewDoc ?? undefined}
-                  title={`Preview of ${productName}`}
-                  loading="lazy"
-                  className="h-full w-full border-0"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock"
-                  referrerPolicy="no-referrer"
-                  style={{ pointerEvents: "none", backgroundColor: "#111" }}
-                />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-background/60 px-4 text-center">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Preview unavailable.{" "}
-                    <button
-                      type="button"
-                      className="text-primary underline-offset-2 hover:underline"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (previewSrc) {
-                          window.open(previewSrc, "_blank", "noopener,noreferrer");
-                        }
-                      }}
-                    >
-                      Open in new tab
-                    </button>
-                  </p>
-                  {previewError && (
-                    <p className="text-[11px] text-muted-foreground/70">{previewError}</p>
+              {objective && (
+                <p className="line-clamp-3 text-sm text-muted-foreground">{objective}</p>
+              )}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Updated {updatedAt}</span>
+                {page.deployment_url && (
+                  <span className="inline-flex items-center gap-1">
+                    <Globe className="h-3.5 w-3.5 text-primary" />
+                    Live deployment ready
+                  </span>
+                )}
+              </div>
+              {personaKeywords.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {personaKeywords.slice(0, 5).map((keyword) => (
+                    <Badge key={keyword} variant="secondary" className="rounded-full text-xs">
+                      {keyword}
+                    </Badge>
+                  ))}
+                  {personaKeywords.length > 5 && (
+                    <Badge variant="outline" className="rounded-full text-xs">
+                      +{personaKeywords.length - 5} more
+                    </Badge>
                   )}
                 </div>
               )}
-              {previewState === "loading" && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <Loader2 className="h-5 w-5 animate-spin text-white/80" />
-                </div>
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-5 w-5 flex-shrink-0 text-muted-foreground transition-transform duration-300",
+                expanded && "rotate-180"
               )}
-            </div>
-            <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-white">
-              <MonitorPlay className="h-3.5 w-3.5" />
-              Preview
-            </div>
+            />
           </div>
-        ) : (
-          <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 text-xs text-muted-foreground">
-            Preview available once this session is deployed.
-          </div>
-        )}
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button asChild size="sm" variant="outline">
-            <Link
-              href={`/builder/${encodeURIComponent(page.session_id)}`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <FileCode className="mr-2 h-4 w-4" />
-              Open builder
-            </Link>
-          </Button>
-          <Button
-            asChild
-            size="sm"
-            variant={page.deployment_url ? "secondary" : "outline"}
-            disabled={!page.deployment_url}
-          >
-            <Link
-              href={page.deployment_url || "#"}
-              target={page.deployment_url ? "_blank" : undefined}
-              rel="noopener noreferrer"
-              onClick={(event) => {
-                event.stopPropagation();
-                if (!page.deployment_url) {
-                  event.preventDefault();
-                }
-              }}
-            >
-              <Globe className="mr-2 h-4 w-4" />
-              {page.deployment_url ? "Visit deployment" : "Waiting for deployment"}
-            </Link>
-          </Button>
-          {page.preview_url && (
-            <Button asChild size="sm" variant="ghost">
+          <div className="flex flex-wrap items-center gap-3">
+            {hasPdf && (
+              <Button
+                size="sm"
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                asChild
+              >
+                <a
+                  href={page.design_blueprint_pdf_url ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Design rationale PDF
+                </a>
+              </Button>
+            )}
+            <Button asChild size="sm" variant="outline">
               <Link
-                href={page.preview_url}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`/builder/${encodeURIComponent(page.session_id)}`}
                 onClick={(event) => event.stopPropagation()}
               >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Open preview
+                <FileCode className="mr-2 h-4 w-4" />
+                Open builder
               </Link>
             </Button>
-          )}
-        </div>
-
-        {expanded && (
-          <div className="mt-4 space-y-6 rounded-xl border border-border/60 bg-background/70 p-6 backdrop-blur-sm">
-            {detailSections.map((section, index) => (
-              <React.Fragment key={section.key}>
-                {index > 0 && <Separator className="opacity-30" />}
-                {section.node}
-              </React.Fragment>
-            ))}
-            {hasPdf && (
-              <>
-                {detailSections.length > 0 && <Separator className="opacity-30" />}
-                <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-primary">Design rationale</p>
-                      <p className="text-xs text-muted-foreground">
-                        Download the blueprint that guided this landing page&apos;s aesthetic and layout decisions.
-                      </p>
-                    </div>
-                    <Button asChild size="sm" className="gap-2">
-                      <a
-                        href={page.design_blueprint_pdf_url ?? "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <Download className="h-4 w-4" />
-                        Download PDF
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              </>
+            <Button
+              asChild
+              size="sm"
+              variant={page.deployment_url ? "secondary" : "outline"}
+              disabled={!page.deployment_url}
+            >
+              <Link
+                href={page.deployment_url || "#"}
+                target={page.deployment_url ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!page.deployment_url) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                <Globe className="mr-2 h-4 w-4" />
+                {page.deployment_url ? "Visit deployment" : "Waiting for deployment"}
+              </Link>
+            </Button>
+            {previewUrl && (
+              <Button asChild size="sm" variant="ghost">
+                <Link
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open preview
+                </Link>
+              </Button>
             )}
           </div>
-        )}
+
+          {expanded && (
+            <div className="space-y-6 rounded-xl border border-border/60 bg-background/70 p-6 backdrop-blur-sm">
+              {detailSections.map((section, index) => (
+                <React.Fragment key={section.key}>
+                  {index > 0 && <Separator className="opacity-30" />}
+                  {section.node}
+                </React.Fragment>
+              ))}
+              {hasPdf && (
+                <>
+                  {detailSections.length > 0 && <Separator className="opacity-30" />}
+                  <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-primary">Design rationale</p>
+                        <p className="text-xs text-muted-foreground">
+                          Download the blueprint that guided this landing page&apos;s aesthetic and layout decisions.
+                        </p>
+                      </div>
+                      <Button asChild size="sm" className="gap-2">
+                        <a
+                          href={page.design_blueprint_pdf_url ?? "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Download className="h-4 w-4" />
+                          Download PDF
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
