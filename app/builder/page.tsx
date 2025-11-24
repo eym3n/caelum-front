@@ -9,7 +9,7 @@ import LivePreview, { type LivePreviewHandle } from '@/components/chat/LivePrevi
 import type { StreamMessage } from '@/components/chat/types'
 import { usePayload } from '@/contexts/PayloadContext'
 import Image from 'next/image'
-import { Smartphone, Maximize2, Minimize2, Moon, Sun, ArrowLeft, Download, Monitor, LayoutTemplate } from 'lucide-react'
+import { Smartphone, Maximize2, Minimize2, Moon, Sun, ArrowLeft, Download, Monitor, LayoutTemplate, Info, FileText, FileCode2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,7 +24,7 @@ import {
 export default function BuilderPage() {
   const params = useParams<{ sessionId?: string }>()
   const routeSessionId = params?.sessionId as string | undefined
-  const { messages, status, start, sessionId, error } = useStreamSession(routeSessionId)
+  const { messages, status, start, sessionId, error, landingPageId } = useStreamSession(routeSessionId)
   const router = useRouter()
   const { payload } = usePayload()
   const { theme, setTheme } = useTheme()
@@ -43,6 +43,17 @@ export default function BuilderPage() {
   const [previewEnabled, setPreviewEnabled] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop')
+  const [lpInfo, setLpInfo] = useState<any | null>(null)
+  const [lpSections, setLpSections] = useState<any[]>([])
+  const [infoLoading, setInfoLoading] = useState(false)
+  const [infoError, setInfoError] = useState<string | null>(null)
+  const [rationalePdfUrl, setRationalePdfUrl] = useState<string | null>(null)
+  // Fallback ID discovered via session endpoint when reloading deep link
+  const [lpIdFromSession, setLpIdFromSession] = useState<string | null>(null)
+  const effectiveLandingId = useMemo(
+    () => (landingPageId ? landingPageId : lpIdFromSession ? lpIdFromSession : null),
+    [landingPageId, lpIdFromSession],
+  )
 
   useEffect(() => {
     setMounted(true)
@@ -54,7 +65,92 @@ export default function BuilderPage() {
     }
   }, [routeSessionId, router])
 
-  // Removed local storage ratio effect
+  // Start polling landing page info/sections using landing_page_id when available
+  useEffect(() => {
+    if (!effectiveLandingId) return
+    let active = true
+    let timer: number | null = null
+    const fetchOnce = async () => {
+      if (!active) return
+      try {
+        if (!infoLoading) setInfoLoading(true)
+        setInfoError(null)
+        const res = await authorizedFetch(`${API_BASE_URL}/v1/landing-pages/${effectiveLandingId}`, {
+          method: 'GET',
+        })
+        if (!res.ok) {
+          // Suppress 404s during early creation; surface other codes
+          if (res.status !== 404) {
+            setInfoError(`Failed to fetch landing page: ${res.status}`)
+          }
+          return
+        }
+        const data = await res.json()
+        if (!active) return
+        setLpInfo(data)
+        setLpSections(Array.isArray(data?.sections) ? data.sections : [])
+        setRationalePdfUrl(data?.design_blueprint_pdf_url || null)
+      } catch (e: any) {
+        if (!active) return
+        setInfoError(e?.message || 'Unable to load landing page')
+      } finally {
+        if (!active) return
+        setInfoLoading(false)
+      }
+    }
+    void fetchOnce()
+    timer = window.setInterval(fetchOnce, 3000)
+    return () => {
+      active = false
+      if (timer) window.clearInterval(timer)
+    }
+  }, [effectiveLandingId, authorizedFetch])
+
+  // If user loads builder via URL with session, discover landing_page_id by session and poll until found
+  useEffect(() => {
+    if (effectiveLandingId) return // already have the ID; skip session lookup
+    if (!routeSessionId) return
+    let active = true
+    let timer: number | null = null
+    const fetchBySession = async () => {
+      if (!active) return
+      try {
+        if (!infoLoading) setInfoLoading(true)
+        setInfoError(null)
+        const res = await authorizedFetch(`${API_BASE_URL}/v1/landing-pages/session/${routeSessionId}`, {
+          method: 'GET',
+        })
+        if (!res.ok) {
+          if (res.status !== 404) {
+            setInfoError(`Failed to fetch landing page: ${res.status}`)
+          }
+          return
+        }
+        const data = await res.json()
+        if (!active) return
+        setLpInfo(data)
+        setLpSections(Array.isArray(data?.sections) ? data.sections : [])
+        setRationalePdfUrl(data?.design_blueprint_pdf_url || null)
+        const foundId: string | undefined =
+          data?.id || data?.landing_page_id || data?.landingPageId
+        if (foundId) {
+          setLpIdFromSession(foundId)
+        }
+      } catch (e: any) {
+        if (!active) return
+        setInfoError(e?.message || 'Unable to load landing page')
+      } finally {
+        if (!active) return
+        setInfoLoading(false)
+      }
+    }
+    void fetchBySession()
+    timer = window.setInterval(fetchBySession, 3000)
+    return () => {
+      active = false
+      if (timer) window.clearInterval(timer)
+    }
+  }, [effectiveLandingId, routeSessionId, authorizedFetch, infoLoading])
 
   const requestPreviewRefresh = React.useCallback(
     (reason: string) => {
@@ -348,14 +444,14 @@ export default function BuilderPage() {
            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => router.push('/dashboard')}>
               <ArrowLeft className="h-4 w-4 text-muted-foreground" />
            </Button>
-           <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
              <h1 className="text-sm font-semibold text-foreground">
                 {sessionId ? `Project ${sessionId.slice(0, 8)}` : "New Project"}
              </h1>
              <span className={`inline-flex h-2 w-2 rounded-full ${status === 'streaming' ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
            </div>
-        </div>
-        <div className="flex items-center gap-2">
+          </div>
+          <div className="flex items-center gap-2">
            <Button variant="outline" size="sm" onClick={handleExport} disabled={!previewEnabled || isExporting}>
               <Download className="mr-2 h-3.5 w-3.5" />
               Export
@@ -365,13 +461,17 @@ export default function BuilderPage() {
            </Button>
            <Button size="sm" className="bg-black text-white hover:bg-black/90" disabled>
               Deploy
-           </Button>
+            </Button>
         </div>
       </header>
 
       <div className="flex-1 flex min-h-0">
-        {/* Chat Panel - Fixed 420px */}
+        {/* Left rail: Tabs (Chat / Info / Sections) - Fixed 420px */}
         <div className="w-[420px] flex flex-col border-r border-border bg-card">
+          {/* Tabs host */}
+          <TabHost
+            chat={
+              <div className="h-[calc(100vh-14rem)] md:h-[calc(100vh-12rem)] flex flex-col">
             <ChatPane
               messages={messages}
               status={status}
@@ -388,6 +488,107 @@ export default function BuilderPage() {
               onJobComplete={() => {
                 requestPreviewRefresh('chat job completed')
               }}
+                />
+              </div>
+            }
+            info={
+              <div className="h-[calc(100vh-14rem)] md:h-[calc(100vh-12rem)] p-3 overflow-auto">
+                {infoLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading landing page…</p>
+                ) : infoError ? (
+                  <p className="text-sm text-destructive">{infoError}</p>
+                ) : lpInfo ? (
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-xs text-muted-foreground">Session</div>
+                      <div className="text-sm font-medium text-foreground break-all">{lpInfo.session_id || sessionId}</div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-muted-foreground">Status:</span> <span className="capitalize">{lpInfo.status || status}</span></div>
+                        <div className="truncate"><span className="text-muted-foreground">Deployment:</span> {lpInfo.deployment_url ? <a className="text-primary hover:underline" href={lpInfo.deployment_url} target="_blank" rel="noreferrer">Open</a> : <span className="text-muted-foreground">—</span>}</div>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-sm font-semibold text-foreground mb-2">Campaign</div>
+                      <div className="space-y-1 text-sm">
+                        <div><span className="text-muted-foreground">Objective:</span> {lpInfo?.business_data?.campaign?.objective || '—'}</div>
+                        <div><span className="text-muted-foreground">Product:</span> {lpInfo?.business_data?.campaign?.productName || '—'}</div>
+                        <div className="truncate"><span className="text-muted-foreground">Offer:</span> {lpInfo?.business_data?.campaign?.primaryOffer || '—'}</div>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-sm font-semibold text-foreground mb-2">Audience</div>
+                      <div className="text-sm text-foreground/90">{lpInfo?.business_data?.audience?.description || '—'}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No data yet.</p>
+                )}
+              </div>
+            }
+            sections={
+              <div className="h-[calc(100vh-14rem)] md:h-[calc(100vh-12rem)] p-3 overflow-auto">
+                {lpSections.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No sections available yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {lpSections.map((sec) => {
+                      const isCode = /\.(tsx|jsx|ts|js|mdx?)$/i.test(String(sec?.filename || ''))
+                      const baseName = String(sec?.filename || '').split('/').pop()
+                      return (
+                        <div key={sec.id || sec.filename} className="rounded-lg border border-border p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                {isCode ? <FileCode2 className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4 text-primary" />}
+                                <div className="text-sm font-medium text-foreground truncate">{sec.name || baseName || 'Section'}</div>
+                              </div>
+                              <div className="mt-1 text-xs text-muted-foreground break-all">{sec.filename}</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => {
+                                const content = sec?.file_content ?? ''
+                                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = baseName || 'section.tsx'
+                                document.body.appendChild(a)
+                                a.click()
+                                document.body.removeChild(a)
+                                setTimeout(() => URL.revokeObjectURL(url), 1000)
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                              Download
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            }
+            rationale={
+              <div className="h-[calc(100vh-14rem)] md:h-[calc(100vh-12rem)] overflow-auto">
+                {!rationalePdfUrl ? (
+                  <div className="p-3 text-sm text-muted-foreground">
+                    No rationale PDF yet.
+                  </div>
+                ) : (
+                  <div className="h-full w-full">
+                    <iframe
+                      src={rationalePdfUrl}
+                      className="w-full h-full min-h-[480px] bg-background"
+                      title="Design Rationale PDF"
+                    />
+                  </div>
+                )}
+              </div>
+            }
             />
         </div>
 
@@ -430,6 +631,12 @@ export default function BuilderPage() {
                  </div>
             </div>
 
+            {/* Preview warning banner */}
+            <div className="px-4 py-2 border-b border-border bg-muted/40 text-muted-foreground text-xs flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              <span>Images might not be displayed on the live preview, deploy to see results</span>
+            </div>
+
             {/* Preview Container */}
             <div className="flex-1 overflow-hidden flex items-center justify-center p-8">
                 <div 
@@ -459,5 +666,33 @@ export default function BuilderPage() {
       </div>
       </div>
     </AuthGuard>
+  )
+}
+
+function TabHost(props: { chat: React.ReactNode; info: React.ReactNode; sections: React.ReactNode; rationale?: React.ReactNode }) {
+  const [tab, setTab] = React.useState<'chat' | 'info' | 'sections' | 'rationale'>('chat')
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-2 border-b border-border">
+        <div className="inline-flex h-9 items-center gap-1 rounded-md bg-muted/50 p-1 text-muted-foreground">
+          {(['chat','info','sections','rationale'] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={[
+                'px-3 py-1.5 text-sm rounded-sm transition-colors',
+                tab === key ? 'bg-background text-foreground shadow' : 'hover:text-foreground'
+              ].join(' ')}
+            >
+              {key[0].toUpperCase() + key.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 min-h-0">
+        {tab === 'chat' ? props.chat : tab === 'info' ? props.info : tab === 'sections' ? props.sections : props.rationale ?? null}
+      </div>
+    </div>
   )
 }

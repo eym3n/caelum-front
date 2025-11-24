@@ -134,12 +134,17 @@ export function useStreamSession(externalSessionId?: string) {
           throw new Error(`Init request failed: ${res.status}`)
         }
 
-        const { job_id: jobId } = (await res.json()) as { job_id?: string }
+        const initJson = (await res.json()) as { job_id?: string; landing_page_id?: string; session_id?: string }
+        const jobId = initJson?.job_id
         if (!jobId) {
           throw new Error('Missing job_id in init response')
         }
 
-        setState((s) => ({ ...s, status: 'streaming' }))
+        setState((s) => ({
+          ...s,
+          status: 'streaming',
+          landingPageId: initJson?.landing_page_id || s.landingPageId,
+        }))
 
         const seenEventIds = new Set<string>()
 

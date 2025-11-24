@@ -1,0 +1,172 @@
+{
+  "session_id": "session-id-code",
+  "payload": {
+    "campaign": {
+      "objective": "Build a high-converting landing page for an AI platform that generates ultra-personalized cold outreach sequences.",
+      "productName": "ColdReach AI",
+      "primaryOffer": "Start with 20 free AI-powered outreach sequences — no credit card required."
+    },
+    "audience": {
+      "description": "SDRs, AEs, and growth teams who rely on outbound but struggle with personalization at scale.",
+      "personaKeywords": [
+        "outbound prospectors",
+        "business development reps",
+        "SaaS growth teams"
+      ],
+      "uvp": "Automated, research-backed outreach that feels handcrafted — sent at scale."
+    },
+    "benefits": {
+      "topBenefits": [
+        "Spend zero time researching — ColdReach does it for you.",
+        "Create multi-email sequences that adapt to buyer behavior.",
+        "Ensure messaging consistency across every rep and workflow."
+      ],
+      "features": [
+        "AI intent scanner for websites & social profiles",
+        "3-step adaptive outreach sequence generator",
+        "Native HubSpot + Apollo + SalesLoft integrations"
+      ],
+      "emotionalTriggers": [
+        "Never send another embarrassing generic email.",
+        "Feel confident hitting quota with smarter outreach.",
+        "Stop losing deals because of weak first impressions."
+      ]
+    },
+    "trust": {
+      "objections": [
+        "Will AI-generated sequences feel robotic?",
+        "Does this integrate with our current sales stack?"
+      ],
+      "testimonials": [
+        "“ColdReach cut our research time by 90% overnight.” – Growth Lead, Enterprise SaaS"
+      ],
+      "indicators": [
+        "Trusted by 70+ modern sales orgs",
+        "GDPR-ready with full data control"
+      ]
+    },
+    "conversion": {
+      "primaryCTA": "Generate a Sequence",
+      "secondaryCTA": "See Live Demo",
+      "primaryKPI": "Sequence completions"
+    },
+    "messaging": {
+      "tone": "Bold, confident, outcome-focused — optimized for quota-driven outbound teams.",
+      "seoKeywords": [
+        "AI cold email generator",
+        "outbound personalization tool",
+        "sales sequence automation"
+      ],
+      "eventTracking": [
+        "sequence_generator_click",
+        "pricing_compare_click",
+        "watch_demo_click"
+      ]
+    },
+    "branding": {
+      "theme": "dark",
+      "colorPalette": {
+        "primary": "#6366F1",
+        "accent": "#14B8A6",
+        "neutral": "#1F2937",
+        "raw": "Primary: Indigo (#6366F1), Accent: Teal (#14B8A6), Background: Charcoal (#111827), Border: Graphite (#374151)"
+      },
+      "fonts": "Headings: Inter ExtraBold; Body: Inter Medium; Accent: JetBrains Mono",
+      "layoutPreference": "Gradient-dark hero, social-proof highlights, and interactive sequence preview.",
+      "sections": [
+        "hero",
+        "benefits",
+        "features",
+        "stats",
+        "testimonials",
+        "pricing",
+        "faq",
+        "cta"
+      ],
+      "sectionData": {
+        "faq": [
+          {
+            "question": "How accurate is the AI’s research?",
+            "answer": "ColdReach uses live data extraction and cross-channel verification to ensure relevance."
+          },
+          {
+            "question": "Can we export sequences?",
+            "answer": "Yes — you can export to HubSpot, Outreach, Apollo, and CSV."
+          }
+        ],
+        "pricing": [
+          {
+            "name": "Startup",
+            "price": "$49 / month",
+            "features": [
+              "Up to 300 AI-generated steps",
+              "Basic integrations",
+              "Email support"
+            ],
+            "cta": "Choose Startup"
+          },
+          {
+            "name": "Scale",
+            "price": "$149 / month",
+            "features": [
+              "Unlimited sequences",
+              "Full outbound integrations",
+              "Premium support"
+            ],
+            "cta": "Choose Scale"
+          }
+        ],
+        "stats": [
+          {
+            "label": "Time saved per rep",
+            "value": "90%",
+            "description": "Reduction in manual research time."
+          },
+          {
+            "label": "Lift in booked meetings",
+            "value": "2.8×",
+            "description": "Average improvement reported by teams."
+          }
+        ],
+        "testimonials": [
+          {
+            "quote": "Our outbound pipeline finally feels predictable.",
+            "author": "Lena Ortiz",
+            "role": "AE Team Lead",
+            "company": "FlowDash",
+            "image": null
+          }
+        ]
+      }
+    },
+    "media": {
+      "videoUrl": "https://example.com/coldreach-demo",
+      "privacyPolicyUrl": "https://coldreach.ai/privacy",
+      "consentText": "By generating a sequence, you agree to our Terms and Privacy Policy."
+    },
+    "advanced": {
+      "formFields": [
+        "business_email",
+        "crm",
+        "outbound_tool",
+        "role"
+      ],
+      "analytics": {
+        "gtag": "G-XXXXXXX",
+        "rawIDs": "GA4, Mixpanel, Segment"
+      },
+      "customPrompt": "Highlight speed, accuracy, and quota-driven outcomes."
+    },
+    "assets": {
+      "logo": "",
+      "heroImage": "",
+      "secondaryImages": [],
+      "favicon": "",
+      "sectionAssets": {
+        "hero:main": [],
+        "benefits:0": [],
+        "testimonials:0": []
+      }
+    }
+  }
+}

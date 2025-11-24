@@ -11,4 +11,5 @@ export interface BuilderState {
   messages: StreamMessage[]
   status: 'idle' | 'initializing' | 'streaming' | 'completed' | 'error'
   error?: string
+  landingPageId?: string
 }
