@@ -90,6 +90,17 @@ export default function BuilderPage() {
         setLpInfo(data)
         setLpSections(Array.isArray(data?.sections) ? data.sections : [])
         setRationalePdfUrl(data?.design_blueprint_pdf_url || null)
+        // If page is fully generated or deployed, stop polling
+        const statusVal = String(data?.status || '').toLowerCase()
+        const isTerminal =
+          statusVal === 'generated' ||
+          statusVal === 'deployed' ||
+          statusVal === 'published' ||
+          statusVal === 'live'
+        if (isTerminal) {
+          active = false
+          if (timer) window.clearInterval(timer)
+        }
       } catch (e: any) {
         if (!active) return
         setInfoError(e?.message || 'Unable to load landing page')
@@ -135,6 +146,17 @@ export default function BuilderPage() {
           data?.id || data?.landing_page_id || data?.landingPageId
         if (foundId) {
           setLpIdFromSession(foundId)
+        }
+        // If page is fully generated or deployed, stop session polling as well
+        const statusVal = String(data?.status || '').toLowerCase()
+        const isTerminal =
+          statusVal === 'generated' ||
+          statusVal === 'deployed' ||
+          statusVal === 'published' ||
+          statusVal === 'live'
+        if (isTerminal) {
+          active = false
+          if (timer) window.clearInterval(timer)
         }
       } catch (e: any) {
         if (!active) return
