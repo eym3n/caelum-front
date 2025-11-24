@@ -579,12 +579,33 @@ export default function BuilderPage() {
                     No rationale PDF yet.
                   </div>
                 ) : (
-                  <div className="h-full w-full">
-                    <iframe
-                      src={rationalePdfUrl}
-                      className="w-full h-full min-h-[480px] bg-background"
-                      title="Design Rationale PDF"
-                    />
+                  <div className="p-3">
+                    <div className="rounded-lg border border-border bg-card p-4">
+                      <div className="text-sm text-muted-foreground mb-3">
+                        Download the design rationale PDF generated for this landing page.
+                      </div>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(rationalePdfUrl as string)
+                            const blob = await res.blob()
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = 'design-rationale.pdf'
+                            document.body.appendChild(a)
+                            a.click()
+                            document.body.removeChild(a)
+                            setTimeout(() => URL.revokeObjectURL(url), 1000)
+                          } catch {
+                            window.open(rationalePdfUrl as string, '_blank')
+                          }
+                        }}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Rationale PDF
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
