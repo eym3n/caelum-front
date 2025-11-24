@@ -12,6 +12,8 @@ import Image from 'next/image'
 import { Smartphone, Maximize2, Minimize2, Moon, Sun, ArrowLeft, Download, Monitor, LayoutTemplate } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AuthGuard } from '@/components/auth/AuthGuard'
+import { useAuth } from '@/contexts/AuthContext'
+import { API_BASE_URL } from '@/lib/config'
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +28,7 @@ export default function BuilderPage() {
   const router = useRouter()
   const { payload } = usePayload()
   const { theme, setTheme } = useTheme()
+  const { authorizedFetch } = useAuth()
   const [mounted, setMounted] = useState(false)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const livePreviewRef = React.useRef<LivePreviewHandle | null>(null)
@@ -72,20 +75,160 @@ export default function BuilderPage() {
     [previewReady, sessionId],
   )
 
-  const handleExport = React.useCallback(async () => {
-    if (!livePreviewRef.current) {
-      console.warn('[builder] Export requested but preview is not ready yet.')
-      return
+  // Minimal ZIP (store only, no compression) for exporting selected files
+  const crcTableRef = React.useRef<Uint32Array | null>(null)
+  const getCrcTable = () => {
+    if (crcTableRef.current) return crcTableRef.current
+    const table = new Uint32Array(256)
+    for (let n = 0; n < 256; n++) {
+      let c = n
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1)
+      }
+      table[n] = c >>> 0
     }
+    crcTableRef.current = table
+    return table
+  }
+  const crc32 = (buf: Uint8Array) => {
+    const table = getCrcTable()
+    let c = 0 ^ -1
+    for (let i = 0; i < buf.length; i++) {
+      c = (c >>> 8) ^ table[(c ^ buf[i]) & 0xff]
+    }
+    return (c ^ -1) >>> 0
+  }
+  const writeUint16 = (arr: number[], v: number) => {
+    arr.push(v & 0xff, (v >>> 8) & 0xff)
+  }
+  const writeUint32 = (arr: number[], v: number) => {
+    arr.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff)
+  }
+  const encoder = new TextEncoder()
+  const buildZip = (files: { name: string; data: Uint8Array }[]) => {
+    const fileRecords: {
+      nameBytes: Uint8Array
+      crc: number
+      size: number
+      offset: number
+      localHeader: number[]
+      data: Uint8Array
+    }[] = []
+    let offset = 0
+    const out: number[] = []
+    for (const f of files) {
+      const nameBytes = encoder.encode(f.name)
+      const crc = crc32(f.data)
+      const size = f.data.length
+      const local: number[] = []
+      // Local file header
+      writeUint32(local, 0x04034b50)
+      writeUint16(local, 20) // version needed
+      writeUint16(local, 0) // flags
+      writeUint16(local, 0) // method store
+      writeUint16(local, 0) // time
+      writeUint16(local, 0) // date
+      writeUint32(local, crc)
+      writeUint32(local, size)
+      writeUint32(local, size)
+      writeUint16(local, nameBytes.length)
+      writeUint16(local, 0) // extra length
+      const record = {
+        nameBytes,
+        crc,
+        size,
+        offset,
+        localHeader: local,
+        data: f.data,
+      }
+      fileRecords.push(record)
+      // append local header + name + data
+      out.push(...local, ...Array.from(nameBytes), ...Array.from(f.data))
+      offset = out.length
+    }
+    const centralDirStart = out.length
+    // Central directory
+    for (const r of fileRecords) {
+      const c: number[] = []
+      writeUint32(c, 0x02014b50)
+      writeUint16(c, 20) // version made by
+      writeUint16(c, 20) // version needed
+      writeUint16(c, 0) // flags
+      writeUint16(c, 0) // method
+      writeUint16(c, 0) // time
+      writeUint16(c, 0) // date
+      writeUint32(c, r.crc)
+      writeUint32(c, r.size)
+      writeUint32(c, r.size)
+      writeUint16(c, r.nameBytes.length)
+      writeUint16(c, 0) // extra
+      writeUint16(c, 0) // comment
+      writeUint16(c, 0) // disk number
+      writeUint16(c, 0) // internal attrs
+      writeUint32(c, 0) // external attrs
+      writeUint32(c, r.offset)
+      out.push(...c, ...Array.from(r.nameBytes))
+    }
+    const centralDirEnd = out.length
+    const centralSize = centralDirEnd - centralDirStart
+    // End of central dir
+    const e: number[] = []
+    writeUint32(e, 0x06054b50)
+    writeUint16(e, 0) // disk
+    writeUint16(e, 0) // start disk
+    writeUint16(e, fileRecords.length)
+    writeUint16(e, fileRecords.length)
+    writeUint32(e, centralSize)
+    writeUint32(e, centralDirStart)
+    writeUint16(e, 0) // comment length
+    out.push(...e)
+    return new Uint8Array(out)
+  }
+
+  const handleExport = React.useCallback(async () => {
     try {
       setIsExporting(true)
-      const data = await livePreviewRef.current.exportProject('/')
-      if (!data || data.length === 0) {
-        throw new Error('No data returned from export')
+      // Fetch file tree via API
+      const res = await authorizedFetch(`${API_BASE_URL}/v1/files/get-files`, {
+        method: 'GET',
+        headers: { 'x-session-id': sessionId },
+      })
+      if (!res.ok) {
+        throw new Error(`get-files failed: ${res.status}`)
       }
-      const blob = new Blob([data], { type: 'application/zip' })
+      const json = await res.json()
+      const filesTree = json?.files
+      if (!filesTree || typeof filesTree !== 'object') {
+        throw new Error('Invalid files response')
+      }
+      // descend into src/components
+      const src = filesTree['src']
+      const components = src?.['components']
+      if (!components) {
+        window.alert('No src/components found in project yet.')
+        return
+      }
+      // flatten object to list of {name, data} with base 'src/components'
+      const out: { name: string; data: Uint8Array }[] = []
+      const walk = (node: any, prefix: string) => {
+        for (const [k, v] of Object.entries(node)) {
+          const p = `${prefix}/${k}`
+          if (typeof v === 'string') {
+            out.push({ name: p.replace(/^\//, ''), data: encoder.encode(v as string) })
+          } else if (v && typeof v === 'object') {
+            walk(v, p)
+          }
+        }
+      }
+      walk(components, 'src/components')
+      if (out.length === 0) {
+        window.alert('No files under src/components to export.')
+        return
+      }
+      const zipBytes = buildZip(out)
+      const blob = new Blob([zipBytes], { type: 'application/zip' })
       const filenameBase = sessionId || routeSessionId || 'landing-page'
-      const filename = `landing-page-${filenameBase}.zip`
+      const filename = `landing-page-sections-${filenameBase}.zip`
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = url
@@ -94,16 +237,16 @@ export default function BuilderPage() {
       anchor.click()
       document.body.removeChild(anchor)
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-      console.log('[builder] Export completed', { filename })
+      console.log('[builder] Export sections completed', { filename, count: out.length })
     } catch (err) {
-      console.error('[builder] Failed to export preview', err)
+      console.error('[builder] Sections export failed', err)
       if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-        window.alert('Unable to export the preview files right now. Please try again in a moment.')
+        window.alert('Unable to export sections right now. Please try again.')
       }
     } finally {
       setIsExporting(false)
     }
-  }, [sessionId, routeSessionId])
+  }, [authorizedFetch, API_BASE_URL, sessionId, routeSessionId])
 
   useEffect(() => {
     if (!previewReady) return
