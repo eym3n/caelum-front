@@ -2,14 +2,28 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ExternalLink, Factory, FileCode, Flame, Loader2, Rocket } from "lucide-react";
+import {
+  ArrowUpDown,
+  Download,
+  ExternalLink,
+  Filter,
+  Globe,
+  Layout,
+  MoreHorizontal,
+  Plus,
+  Zap,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLandingPages } from "@/hooks/useLandingPages";
 import type { LandingPageRecord } from "@/lib/types/landing-page";
@@ -39,241 +53,205 @@ function statusVariant(status: LandingPageRecord["status"]) {
   }
 }
 
+function StatusBadge({ status }: { status: LandingPageRecord["status"] }) {
+  const styles = {
+    generated: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20",
+    failed: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
+    generating: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
+    pending: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20",
+  };
+
+  const label = {
+    generated: "Live",
+    failed: "Failed",
+    generating: "Building",
+    pending: "Draft",
+  };
+
+  const className = styles[status] || styles.pending;
+  const text = label[status] || status;
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${className}`}>
+      {status === "generated" && <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" />}
+      {text}
+    </span>
+  );
+}
+
 export default function DashboardHomePage() {
   const { user } = useAuth();
-  const { items, loading, error, refresh } = useLandingPages({ pageSize: 50 });
+  const { items, loading, error } = useLandingPages({ pageSize: 50 });
 
-  const latest = React.useMemo(() => items.slice(0, 5), [items]);
   const generatedCount = React.useMemo(
     () => items.filter((page) => page.status === "generated").length,
     [items]
   );
-  const generatingCount = React.useMemo(
-    () => items.filter((page) => page.status === "generating" || page.status === "pending").length,
-    [items]
-  );
-  const failedCount = React.useMemo(
-    () => items.filter((page) => page.status === "failed").length,
-    [items]
-  );
+  const totalViews = React.useMemo(() => items.length * 124, [items]); // Mock data
+  const conversionRate = React.useMemo(() => "3.2%", []); // Mock data
 
   return (
     <div className="space-y-8">
-      <Card
-        className="relative overflow-hidden border border-border/40 text-white [--strip-alpha:0.96] dark:[--strip-alpha:0.6]"
-        style={{
-          backgroundImage:
-            "linear-gradient(120deg, rgba(124,58,237,var(--strip-alpha)), rgba(67,176,255,var(--strip-alpha)), rgba(34,211,238,var(--strip-alpha)))",
-        }}
-      >
-        <div
-          className="absolute inset-0 animate-gradient opacity-80"
-          style={{ backgroundImage: "inherit" }}
-        />
-        <div className="absolute inset-0 hidden dark:block bg-black/30" />
-        <div className="relative z-10 flex flex-col gap-8 overflow-hidden rounded-xl px-8 py-10 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl space-y-4">
-            <p className="text-sm uppercase tracking-[0.3em] text-white/80">Ayor Landing Pages Studio</p>
-            <h1 className="text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
-              {user?.full_name?.length ? `Welcome back, ${user.full_name}` : "Welcome back"}
-            </h1>
-            <p className="text-sm text-white/80 lg:text-base">
-              Craft conversion-ready landing pages in minutes. Launch a new build or revisit your existing
-              sessions to keep iterating.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                asChild
-                size="lg"
-                className="rounded-full bg-white px-8 text-sm font-semibold text-purple-700 hover:bg-white/90"
-              >
-                <Link href="/create">Create landing page</Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="rounded-full border-white/50 bg-white/10 px-8 text-sm font-semibold text-white hover:bg-white/20"
-              >
-                <Link href="/dashboard/landing-pages">View landing pages</Link>
-              </Button>
-            </div>
-          </div>
-          <div className="relative h-52 w-full max-w-md shrink-0 overflow-hidden rounded-3xl border border-white/30 bg-white/10 shadow-inner">
-            <Image
-              src="/landing-page-cta.png"
-              alt="Landing page preview"
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Manage your landing pages and view performance.</p>
         </div>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <Card className="overflow-hidden border border-border/70 bg-card/70">
-          <div className="flex items-center justify-between gap-3 border-b border-border/70 px-6 py-4">
-            <div>
-              <h2 className="text-lg font-semibold">Recent activity</h2>
-              <p className="text-sm text-muted-foreground">
-                The five most recent landing pages created by your team.
-              </p>
-            </div>
-          </div>
-          {loading && (
-            <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading landing pages…
-            </div>
-          )}
-          {!loading && error && (
-            <div className="space-y-3 px-6 py-10 text-center text-sm text-destructive">
-              <p>{error}</p>
-              <Button size="sm" variant="outline" onClick={refresh}>
-                Try again
-              </Button>
-            </div>
-          )}
-          {!loading && !error && latest.length === 0 && (
-            <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-              <Image
-                src="/empty.png"
-                alt="No recent activity"
-                width={360}
-                height={240}
-                className="h-auto w-[280px] opacity-90 sm:w-[360px]"
-                priority
-              />
-              <p className="text-sm text-muted-foreground">No recent activity yet.</p>
-              <p className="text-xs text-muted-foreground/80">
-                Create or update a landing page to see it appear here.
-              </p>
-            </div>
-          )}
-          {!loading && !error && latest.length > 0 && (
-            <div className="divide-y divide-border/70">
-              {latest.map((page) => {
-                const productName =
-                  page.business_data?.campaign?.productName?.trim() || "Untitled landing page";
-                const objective = page.business_data?.campaign?.objective?.trim() || null;
-                const theme = page.business_data?.branding?.theme?.trim() || null;
-                return (
-                  <div
-                    key={page.id}
-                    className="grid gap-4 px-6 py-4 sm:grid-cols-[1.6fr_auto_auto_auto] sm:items-center"
-                  >
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold text-foreground">{productName}</p>
-                      {objective && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{objective}</p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wide text-muted-foreground/80">
-                        <span>Updated {formatDate(page.updated_at)}</span>
-                        {theme && <span>Theme: {theme}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={statusVariant(page.status)} className="text-xs capitalize">
-                        {page.status}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {page.deployment_url ? (
-                        <Link
-                          href={page.deployment_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                        >
-                          View deployment <ExternalLink className="size-3.5" />
-                        </Link>
-                      ) : (
-                        <span className="italic text-muted-foreground/80">Deployment pending</span>
-                      )}
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/builder/${encodeURIComponent(page.session_id)}`}>Open builder</Link>
-                      </Button>
-                      <Button
-                        asChild
-                        size="sm"
-                        disabled={!page.deployment_url}
-                        variant={page.deployment_url ? "secondary" : "outline"}
-                      >
-                        <Link
-                          href={page.deployment_url || "#"}
-                          target={page.deployment_url ? "_blank" : undefined}
-                          rel="noopener noreferrer"
-                        >
-                          Visit site
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-
-        <Card className="border border-border/70 bg-card/70 p-6">
-          <h2 className="text-lg font-semibold">Status snapshot</h2>
-          <p className="text-sm text-muted-foreground">Live view of deployment readiness.</p>
-          <div className="mt-6 space-y-4">
-            <StatusPill
-              label="Ready & deployed"
-              value={generatedCount}
-              total={items.length}
-              tone="success"
-            />
-            <StatusPill
-              label="Generating"
-              value={generatingCount}
-              total={items.length}
-              tone="default"
-            />
-            <StatusPill label="Requires retry" value={failedCount} total={items.length} tone="alert" />
-          </div>
-          <Separator className="my-5" />
-          <Button asChild size="sm" className="w-full">
-            <Link href="/dashboard/landing-pages">
-              View all landing pages
-              <ExternalLink className="ml-2 size-4" />
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" className="h-9 gap-2">
+            <Filter className="h-4 w-4" />
+            Filter
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 gap-2">
+            <ArrowUpDown className="h-4 w-4" />
+            Sort
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 gap-2">
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+          <Button size="sm" className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+            <Link href="/create">
+              <Plus className="h-4 w-4" />
+              Create Project
             </Link>
           </Button>
-        </Card>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Total Pages"
+          value={items.length.toString()}
+          icon={Layout}
+          trend="+12% from last month"
+        />
+        <StatsCard
+          title="Published"
+          value={generatedCount.toString()}
+          icon={Globe}
+          trend="+4% from last month"
+        />
+        <StatsCard
+          title="Total Views"
+          value={totalViews.toLocaleString()}
+          icon={Zap}
+          trend="+24% from last month"
+        />
+        <StatsCard
+          title="Conversion Rate"
+          value={conversionRate}
+          icon={ExternalLink} // Placeholder for a chart/graph icon
+          trend="+1.2% from last month"
+        />
+      </div>
+
+      {/* Recent Activity Table */}
+      <div className="rounded-lg border border-border bg-card shadow-sm">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h3 className="font-semibold text-foreground">Recent Activity</h3>
+            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 hover:bg-primary/10" asChild>
+                <Link href="/dashboard/landing-pages">View All</Link>
+            </Button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-muted-foreground">
+            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="px-6 py-3 font-medium">Project Name</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Last Updated</th>
+                <th className="px-6 py-3 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">
+                    Loading...
+                  </td>
+                </tr>
+              ) : items.length === 0 ? (
+                <tr>
+                   <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">
+                      No projects found. Create one to get started.
+                   </td>
+                </tr>
+              ) : (
+                items.slice(0, 5).map((page) => (
+                  <tr key={page.id} className="hover:bg-muted/50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-foreground">
+                      <div className="flex items-center gap-3">
+                         <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center text-primary">
+                            <Layout className="h-4 w-4" />
+                         </div>
+                         <div>
+                            <div className="font-medium">{page.business_data?.campaign?.productName || "Untitled Project"}</div>
+                            <div className="text-xs text-muted-foreground">{page.business_data?.branding?.theme || "No theme"}</div>
+                         </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={page.status} />
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {formatDate(page.updated_at)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/builder/${page.session_id}`}>Edit in Builder</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild disabled={!page.deployment_url}>
+                            <Link href={page.deployment_url || "#"} target="_blank">Visit Site</Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
 
-function StatusPill({
-  label,
+function StatsCard({
+  title,
   value,
-  total,
-  tone,
+  icon: Icon,
+  trend,
 }: {
-  label: string;
-  value: number;
-  total: number;
-  tone: "success" | "alert" | "default";
+  title: string;
+  value: string;
+  icon: any;
+  trend: string;
 }) {
-  const percentage = total ? Math.round((value / total) * 100) : 0;
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-muted/40 px-4 py-3">
-      <div className="space-y-1">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{percentage}% of landing pages</p>
+    <Card className="p-6 border border-border shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <h3 className="mt-2 text-3xl font-bold text-foreground">{value}</h3>
+        </div>
+        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
       </div>
-      <Badge
-        variant={tone === "success" ? "secondary" : tone === "alert" ? "destructive" : "outline"}
-        className="min-w-[3rem] justify-center rounded-full text-sm"
-      >
-        {value}
-      </Badge>
-    </div>
+      <div className="mt-4 flex items-center text-xs">
+         <span className="text-green-600 font-medium">{trend}</span>
+      </div>
+    </Card>
   );
 }
-

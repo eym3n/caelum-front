@@ -14,6 +14,7 @@ import {
   Moon,
   Search,
   Settings,
+  Sparkles,
   Sun,
   Users2,
 } from "lucide-react";
@@ -27,20 +28,16 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarRail,
-  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 
 const generalNav = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -70,42 +67,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <AuthGuard>
-      <SidebarProvider>
+      <SidebarProvider
+        style={{ "--sidebar-width": "256px" } as React.CSSProperties}
+      >
         <div className="flex min-h-screen w-full bg-sidebar">
-          <Sidebar collapsible="icon" className="bg-background">
-            <SidebarHeader className="px-3 py-4">
+          <Sidebar className="border-r border-sidebar-border bg-sidebar">
+            <SidebarHeader className="px-4 py-6">
               <Link
                 href="/"
-                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
+                className="flex items-center gap-3"
               >
-                <span className="grid size-9 shrink-0 place-items-center rounded-full">
-                  <Image
-                    src="/logo.svg"
-                    alt="Ayor Landing Pages logo"
-                    width={28}
-                    height={28}
-                    className="size-7 object-contain"
-                  />
-                </span>
-                <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="text-xs tracking-wider text-muted-foreground">Ayor Landing Pages</span>
-                </div>
+                <Image
+                  src="/logo.svg"
+                  alt="Ayor Landing Pages logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
+                <span className="font-bold text-lg tracking-tight text-sidebar-foreground">Ayor</span>
               </Link>
+              <div className="relative mt-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  className="h-9 w-full rounded-lg bg-muted/50 pl-9 text-sm border-input focus:border-primary focus:ring-primary"
+                />
+              </div>
             </SidebarHeader>
-            <SidebarContent>
+            <SidebarContent className="px-3">
               <SidebarGroup>
-                <SidebarGroupLabel>General</SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <SidebarMenu>
+                  <SidebarMenu className="gap-1">
                     {generalNav.map((item) => {
                       const Icon = item.icon;
                       const isActive =
                         pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
                       return (
                         <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton asChild isActive={isActive}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={isActive}
+                            className={`h-10 gap-3 rounded-lg px-3 font-medium transition-colors ${
+                              isActive
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                                : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            }`}
+                          >
                             <Link href={item.href}>
-                              <Icon className="size-4" />
+                              <Icon className={`h-5 w-5 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
                               <span>{item.label}</span>
                             </Link>
                           </SidebarMenuButton>
@@ -117,16 +126,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </SidebarGroup>
 
               <SidebarGroup>
-                <SidebarGroupLabel>Collaboration</SidebarGroupLabel>
+                <p className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Collaboration</p>
                 <SidebarGroupContent>
-                  <SidebarMenu>
+                  <SidebarMenu className="gap-1">
                     {collaborationNav.map((item) => {
                       const Icon = item.icon;
                       return (
                         <SidebarMenuItem key={item.label}>
-                          <SidebarMenuButton asChild>
+                          <SidebarMenuButton
+                            asChild
+                            className="h-10 gap-3 rounded-lg px-3 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          >
                             <Link href={item.href}>
-                              <Icon className="size-4" />
+                              <Icon className="h-5 w-5 text-muted-foreground" />
                               <span>{item.label}</span>
                             </Link>
                           </SidebarMenuButton>
@@ -138,39 +150,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </SidebarGroup>
 
               <SidebarGroup>
-                <SidebarGroupLabel>Tools</SidebarGroupLabel>
+                <p className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tools</p>
                 <SidebarGroupContent>
-                  <SidebarMenu>
+                  <SidebarMenu className="gap-1">
                     {analyticsNav.map((item) => {
                       const Icon = item.icon;
                       return (
                         <SidebarMenuItem key={item.label}>
-                          <SidebarMenuButton asChild>
+                          <SidebarMenuButton
+                            asChild
+                            className="h-10 gap-3 rounded-lg px-3 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          >
                             <Link href={item.href}>
-                              <Icon className="size-4" />
-                              <span>{item.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              <SidebarSeparator />
-
-              <SidebarGroup>
-                <SidebarGroupLabel>Support</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {supportNav.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <SidebarMenuItem key={item.label}>
-                          <SidebarMenuButton asChild>
-                            <Link href={item.href}>
-                              <Icon className="size-4" />
+                              <Icon className="h-5 w-5 text-muted-foreground" />
                               <span>{item.label}</span>
                             </Link>
                           </SidebarMenuButton>
@@ -181,73 +173,57 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </SidebarGroupContent>
               </SidebarGroup>
             </SidebarContent>
-            <SidebarFooter className="border-t border-border/70">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild size="lg">
-                    <div className="flex items-center gap-3 rounded-md border border-dashed border-border/60 px-3 py-2 text-left text-sm">
-                      <div className="grid size-9 place-items-center rounded-full bg-primary/10 text-primary">
-                        {(user?.full_name || user?.email || "U")
-                          .trim()
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </div>
-                      <div className="flex flex-1 flex-col">
-                        <span className="font-medium leading-tight">{user?.full_name || user?.email}</span>
-                        <span className="text-xs text-muted-foreground">Pro</span>
-                      </div>
+
+            <SidebarFooter className="p-4">
+               <div className="flex items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/50 p-3">
+                  <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-primary to-indigo-300 p-[2px]">
+                    <div className="h-full w-full rounded-full bg-sidebar p-[2px]">
+                         <div className="flex h-full w-full items-center justify-center rounded-full bg-muted font-bold text-primary">
+                            {(user?.full_name || user?.email || "U").slice(0, 2).toUpperCase()}
+                        </div>
                     </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton onClick={logout}>
-                    <LogOut className="size-4" />
+                    <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-sidebar bg-green-500"></div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-sidebar-foreground">{user?.full_name || "User"}</p>
+                        <span className="inline-flex items-center rounded-full bg-gradient-to-r from-primary to-[#5D56E0] px-1.5 py-0.5 text-[10px] font-bold text-white">PRO</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="text-lg font-bold text-primary align-middle mr-1">&infin;</span>
+                        <span> credits</span>
+                    </div>
+                  </div>
+               </div>
+               <div className="mt-2">
+                  <SidebarMenuButton onClick={logout} className="w-full justify-center text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent">
+                    <LogOut className="size-4 mr-2" />
                     <span>Sign out</span>
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
+               </div>
             </SidebarFooter>
-            <SidebarRail />
           </Sidebar>
-          <SidebarInset className="bg-background">
+          <SidebarInset className="bg-gray-50 dark:bg-background transition-colors duration-200">
             <div className="flex min-h-screen flex-1 flex-col">
-              <header className="sticky top-0 z-30 border-b border-border/80 bg-background/80 backdrop-blur-sm">
-                <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
-                  <SidebarTrigger className="text-muted-foreground" />
-                  <Separator orientation="vertical" className="hidden h-5 md:block" />
-                  <div className="relative flex flex-1 items-center">
-                    <Search className="absolute left-3 size-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search campaigns, sessions, or commands..."
-                      className="h-10 w-full max-w-md rounded-xl bg-muted/40 pl-10 text-sm"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full"
-                      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                      aria-label="Toggle theme"
-                    >
-                      {mounted ? (
-                        theme === "light" ? (
-                          <Moon className="size-4" />
-                        ) : (
-                          <Sun className="size-4" />
-                        )
-                      ) : (
-                        <Sun className="size-4" />
-                      )}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="rounded-full">
-                      <Bell className="size-4" />
-                      <span className="sr-only">Notifications</span>
-                    </Button>
-                  </div>
-                </div>
-              </header>
-              <main className="flex-1 px-4 pb-8 pt-6 sm:px-6 lg:px-8">{children}</main>
+               <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background/80 backdrop-blur-sm px-8 sticky top-0 z-10">
+                   <div className="flex items-center gap-4 md:hidden">
+                        <SidebarTrigger />
+                   </div>
+                   <div className="flex flex-1 justify-end items-center gap-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                        >
+                           {mounted && theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                            <Bell className="h-5 w-5" />
+                        </Button>
+                   </div>
+               </header>
+              <main className="flex-1 px-8 py-6">{children}</main>
             </div>
           </SidebarInset>
         </div>
@@ -255,4 +231,3 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </AuthGuard>
   );
 }
-
