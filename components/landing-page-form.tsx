@@ -124,6 +124,10 @@ interface FormData {
   logoUpload: string | null
   faviconUpload: string | null
 
+  // Data-informed (optional CSV uploads)
+  campaignDataUrl?: string | null
+  experimentDataUrl?: string | null
+
   // Step 8: Section Selection & Positioning
   selectedSections: SectionType[]
   // Section-specific data
@@ -218,12 +222,18 @@ const STEPS = [
   },
   {
     id: 9,
+    title: "Data & Experiments",
+    description: "Optionally upload historical CSVs to inform design",
+    fields: ["campaignDataUrl", "experimentDataUrl"],
+  },
+  {
+    id: 10,
     title: "Media & Legal",
     description: "Videos, URLs & compliance",
     fields: ["videoURL", "privacyPolicyURL", "gdprCcpaConsentText"],
   },
   {
-    id: 10,
+    id: 11,
     title: "Final Setup",
     description: "Analytics & AI prompt",
     fields: ["formFieldsConfig", "ctaApiEndpoint", "analyticsIDs", "gtagID", "customPrompt"],
@@ -450,6 +460,18 @@ const FIELD_LABELS: Record<
     type: "textarea",
     icon: Sparkles,
   },
+  campaignDataUrl: {
+    label: "Campaign Dataset (CSV)",
+    description: "Upload a CSV of historical campaign performance. Columns like: campaign, date, spend, clicks, conversions, etc.",
+    type: "file",
+    icon: FileText,
+  },
+  experimentDataUrl: {
+    label: "Experiment Dataset (CSV)",
+    description: "Upload a CSV of experiments (A/B tests). Columns like: experiment, variant, audience, metrics, result.",
+    type: "file",
+    icon: FileText,
+  },
 }
 
 // Map flat form data to normalized payload used by the builder streaming endpoint.
@@ -520,6 +542,10 @@ function buildPayload(fd: Partial<FormData>) {
       videoUrl: fd.videoURL?.trim() ? fd.videoURL : null,
       privacyPolicyUrl: fd.privacyPolicyURL || "",
       consentText: fd.gdprCcpaConsentText || "",
+    },
+    data: {
+      campaignDataUrl: fd.campaignDataUrl || null,
+      experimentDataUrl: fd.experimentDataUrl || null,
     },
     advanced: {
       formFields: split(fd.formFieldsConfig),
@@ -2383,6 +2409,9 @@ const OPTIONAL_FIELDS = new Set<string>([
   "videoURL",
   "logoUpload",
   "faviconUpload",
+  // Data-informed CSVs are optional
+  "campaignDataUrl",
+  "experimentDataUrl",
   "analyticsIDs",
   "gtagID",
   "customPrompt",
@@ -2395,10 +2424,51 @@ const OPTIONAL_FIELDS = new Set<string>([
   "eventTrackingSetup",
 ])
 
+function CsvMiniTable({
+  title,
+  columns,
+  row,
+}: {
+  title: string
+  columns: string[]
+  row: (string | number)[]
+}) {
+  return (
+    <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-3 py-2">
+        <p className="text-[11px] font-medium text-muted-foreground">{title}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-muted/50">
+            <tr>
+              {columns.map((c) => (
+                <th key={c} className="px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="hover:bg-muted/40">
+              {row.map((cell, idx) => (
+                <td key={idx} className="px-3 py-2 text-[12px] text-foreground/90">
+                  <span className="inline-block max-w-[10rem] truncate align-middle">{String(cell)}</span>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export function LandingPageForm() {
   const router = useRouter()
   const { setPayload } = usePayload()
   const { authorizedFetch } = useAuth()
+  const [creationSessionId] = useState(generateSessionId())
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<Partial<FormData>>({
     selectedSections: ["hero", "benefits", "features"],
@@ -2409,8 +2479,14 @@ export function LandingPageForm() {
     testimonialsData: [],
     customSections: [],
     sectionAssets: {},
+    campaignDataUrl: null,
+    experimentDataUrl: null,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [csvUploading, setCsvUploading] = useState<Record<"campaignDataUrl" | "experimentDataUrl", boolean>>({
+    campaignDataUrl: false,
+    experimentDataUrl: false,
+  })
   const [dummyOrder, setDummyOrder] = useState<number[]>(() =>
     shuffleArray(Array.from({ length: DUMMY_DATA_SETS.length }, (_, i) => i))
   )
@@ -2505,6 +2581,48 @@ export function LandingPageForm() {
     }
   }
 
+  // Upload CSV to backend to obtain public URL (campaign/experiment datasets)
+  const handleCsvUpload = async (field: "campaignDataUrl" | "experimentDataUrl", files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const file = files[0]
+    const name = file?.name?.toLowerCase() || ""
+    if (!(file.type === "text/csv" || name.endsWith(".csv"))) {
+      setErrors((prev) => ({ ...prev, [field]: "Please upload a .csv file" }))
+      return
+    }
+    try {
+      setCsvUploading((prev) => ({ ...prev, [field]: true }))
+      const form = new FormData()
+      form.append("file", file)
+      const res = await authorizedFetch(`${API_BASE_URL}/v1/files/upload-csv`, {
+        method: "POST",
+        headers: { "x-session-id": creationSessionId },
+        body: form,
+      })
+      if (!res.ok) throw new Error(`CSV upload failed (${res.status})`)
+      const data = await res.json()
+      const url: string | undefined = data?.url
+      if (!url) throw new Error("No URL returned")
+      setFormData((prev) => ({ ...prev, [field]: url }))
+      if (errors[field]) {
+        setErrors((prev) => {
+          const next = { ...prev }
+          delete next[field]
+          return next
+        })
+      }
+    } catch (e) {
+      console.error("CSV upload error", e)
+      setErrors((prev) => ({ ...prev, [field]: "Upload failed" }))
+    } finally {
+      setCsvUploading((prev) => ({ ...prev, [field]: false }))
+    }
+  }
+
+  const removeCsv = (field: "campaignDataUrl" | "experimentDataUrl") => {
+    setFormData((prev) => ({ ...prev, [field]: null }))
+  }
+
   const removeFile = (field: string, index?: number) => {
       setFormData(prev => ({
         ...prev,
@@ -2554,7 +2672,7 @@ export function LandingPageForm() {
 
     // Create a new session id for this brief and redirect to the session-scoped builder route.
     // Backend will receive the same id via `x-session-id` when streaming starts.
-    const sessionId = generateSessionId()
+    const sessionId = creationSessionId
     router.push(`/builder/${encodeURIComponent(sessionId)}`)
   }
 
@@ -2784,6 +2902,83 @@ export function LandingPageForm() {
                         ? "order-6"
                         : ""
                       : ""
+
+              // Step 1: custom layout & styling
+              // Custom CSV upload fields (Data & Experiments step)
+              if (field === "campaignDataUrl" || field === "experimentDataUrl") {
+                const uploading = csvUploading[field as "campaignDataUrl" | "experimentDataUrl"]
+                const currentUrl = (formData[field as keyof FormData] as string | null) || ""
+                const fileInputId = `${inputId}-csv`
+                return (
+                  <div key={field} className="md:col-span-2 space-y-3">
+                    <div className="flex items-start gap-2">
+                      {config.icon && (
+                        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <config.icon className="h-4 w-4" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium leading-none">
+                          {config.label}
+                          <span className="ml-1 text-muted-foreground">(Optional)</span>
+                        </Label>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{config.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        id={fileInputId}
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="hidden"
+                        onChange={(e) => handleCsvUpload(field as any, e.target.files)}
+                        disabled={uploading}
+                      />
+                      <Button
+                        type="button"
+                        disabled={uploading}
+                        className="gap-2"
+                        onClick={() => {
+                          const el = document.getElementById(fileInputId) as HTMLInputElement | null
+                          el?.click()
+                        }}
+                      >
+                        <span>{uploading ? "Uploading…" : "Upload CSV"}</span>
+                      </Button>
+                      {currentUrl && (
+                        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs">
+                          <span className="max-w-[36ch] truncate text-muted-foreground">{currentUrl}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            type="button"
+                            onClick={() => removeCsv(field as any)}
+                            className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="pt-1">
+                      {field === "campaignDataUrl" ? (
+                        <CsvMiniTable
+                          title="Campaign Dataset — required columns"
+                          columns={["campaign", "date", "spend", "clicks", "conversions"]}
+                          row={["Spring Promo", "2025-05-01", "$1,250", "3,420", "187"]}
+                        />
+                      ) : (
+                        <CsvMiniTable
+                          title="Experiment Dataset — required columns"
+                          columns={["experiment", "variant", "audience", "metric", "result"]}
+                          row={["Hero CTA Test", "B", "Returning users", "CTR 4.8%", "Winner"]}
+                        />
+                      )}
+                    </div>
+                    {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+                  </div>
+                )
+              }
 
               // Step 1: custom layout & styling
               if (step.id === 1 && field === "productServiceName") {
