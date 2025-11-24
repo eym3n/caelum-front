@@ -5,13 +5,17 @@ import Link from "next/link";
 import {
   ArrowUpDown,
   Download,
-  ExternalLink,
+  Eye,
   Filter,
-  Globe,
-  Layout,
-  MoreHorizontal,
+  MoreVertical,
   Plus,
-  Zap,
+  SlidersHorizontal,
+  TrendingUp,
+  Users,
+  Clock,
+  ExternalLink,
+  Trash2,
+  Copy
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -54,27 +58,15 @@ function statusVariant(status: LandingPageRecord["status"]) {
 }
 
 function StatusBadge({ status }: { status: LandingPageRecord["status"] }) {
-  const styles = {
-    generated: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20",
-    failed: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
-    generating: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
-    pending: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20",
-  };
-
-  const label = {
-    generated: "Live",
-    failed: "Failed",
-    generating: "Building",
-    pending: "Draft",
-  };
-
-  const className = styles[status] || styles.pending;
-  const text = label[status] || status;
-
+  const isPublished = status === 'generated'; // Mapping 'generated' to 'published' for UI consistency
+  
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${className}`}>
-      {status === "generated" && <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" />}
-      {text}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs ${
+      isPublished 
+        ? 'bg-green-100 text-green-800' 
+        : 'bg-gray-100 text-gray-800'
+    }`}>
+      {isPublished ? '● Published' : '● Draft'}
     </span>
   );
 }
@@ -88,133 +80,181 @@ export default function DashboardHomePage() {
     [items]
   );
   const totalViews = React.useMemo(() => items.length * 124, [items]); // Mock data
+  const totalConversions = React.useMemo(() => items.length * 12, [items]); // Mock data
   const conversionRate = React.useMemo(() => "3.2%", []); // Mock data
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Manage your landing pages and view performance.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="h-9 gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm" className="h-9 gap-2">
-            <ArrowUpDown className="h-4 w-4" />
-            Sort
-          </Button>
-          <Button variant="outline" size="sm" className="h-9 gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-          <Button size="sm" className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
-            <Link href="/create">
-              <Plus className="h-4 w-4" />
-              Create Project
-            </Link>
-          </Button>
+      <div className="bg-white border-b border-gray-200 -mx-8 -mt-6 px-8 py-6 mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-gray-900 text-2xl font-semibold">Landing Pages</h1>
+            <p className="text-gray-600">Manage and track your landing pages</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" className="gap-2">
+              <Filter className="w-4 h-4" />
+              Filter
+            </Button>
+            <Button variant="outline" className="gap-2">
+              <SlidersHorizontal className="w-4 h-4" />
+              Sort
+            </Button>
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+            <Button 
+              className="bg-[#7269F8] hover:bg-[#5d56e0] text-white"
+              asChild
+            >
+              <Link href="/create">
+                <Plus className="w-4 h-4 mr-2" />
+                Create New Landing Page
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total Pages"
-          value={items.length.toString()}
-          icon={Layout}
-          trend="+12% from last month"
-        />
-        <StatsCard
-          title="Published"
-          value={generatedCount.toString()}
-          icon={Globe}
-          trend="+4% from last month"
-        />
+      <div className="grid grid-cols-3 gap-6 mb-8">
         <StatsCard
           title="Total Views"
           value={totalViews.toLocaleString()}
-          icon={Zap}
-          trend="+24% from last month"
+          icon={Eye}
+          iconBg="bg-blue-50"
+          iconColor="text-blue-600"
+          trend="+12.5% from last month"
         />
         <StatsCard
-          title="Conversion Rate"
+          title="Total Conversions"
+          value={totalConversions.toString()} // Placeholder mock data mismatch correction
+          icon={Users}
+          iconBg="bg-green-50"
+          iconColor="text-green-600"
+          trend="+8.2% from last month"
+        />
+        <StatsCard
+          title="Avg. Conversion Rate"
           value={conversionRate}
-          icon={ExternalLink} // Placeholder for a chart/graph icon
-          trend="+1.2% from last month"
+          icon={TrendingUp}
+          iconBg="bg-purple-50"
+          iconColor="text-[#7269F8]"
+          trend="+2.1% from last month"
         />
       </div>
 
       {/* Recent Activity Table */}
-      <div className="rounded-lg border border-border bg-card shadow-sm">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold text-foreground">Recent Activity</h3>
-            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 hover:bg-primary/10" asChild>
-                <Link href="/dashboard/landing-pages">View All</Link>
-            </Button>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-gray-900 font-medium">Your Landing Pages</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-muted-foreground">
-            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 font-medium">Project Name</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Last Updated</th>
-                <th className="px-6 py-3 font-medium text-right">Actions</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Name</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">URL</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Status</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Views</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Conversions</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Conv. Rate</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Created</th>
+                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                   <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">
-                      No projects found. Create one to get started.
+                   <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 rounded-full bg-[#7269F8]/10 flex items-center justify-center mb-4">
+                          <Plus className="w-8 h-8 text-[#7269F8]" />
+                        </div>
+                        <h3 className="text-gray-900 mb-2 font-medium">No landing pages yet</h3>
+                        <p className="text-gray-600 mb-6">Create your first AI-powered landing page in minutes</p>
+                        <Button 
+                          asChild
+                          className="bg-[#7269F8] hover:bg-[#5d56e0] text-white"
+                        >
+                          <Link href="/create">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Your First Landing Page
+                          </Link>
+                        </Button>
+                      </div>
                    </td>
                 </tr>
               ) : (
                 items.slice(0, 5).map((page) => (
-                  <tr key={page.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-foreground">
-                      <div className="flex items-center gap-3">
-                         <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                            <Layout className="h-4 w-4" />
-                         </div>
-                         <div>
-                            <div className="font-medium">{page.business_data?.campaign?.productName || "Untitled Project"}</div>
-                            <div className="text-xs text-muted-foreground">{page.business_data?.branding?.theme || "No theme"}</div>
-                         </div>
-                      </div>
+                  <tr key={page.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="text-gray-900 font-medium">{page.business_data?.campaign?.productName || "Untitled Project"}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <a 
+                        href={page.deployment_url || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#7269F8] hover:text-[#5d56e0] flex items-center gap-1 text-sm"
+                      >
+                        {page.deployment_url ? new URL(page.deployment_url).host : "Pending..."}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={page.status} />
                     </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {formatDate(page.updated_at)}
+                    <td className="px-6 py-4 text-gray-900 text-sm">
+                      {/* Mock data for views */}
+                      {(Math.floor(Math.random() * 10000) + 1000).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/builder/${page.session_id}`}>Edit in Builder</Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild disabled={!page.deployment_url}>
-                            <Link href={page.deployment_url || "#"} target="_blank">Visit Site</Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <td className="px-6 py-4 text-gray-900 text-sm">
+                      {/* Mock data for conversions */}
+                      {(Math.floor(Math.random() * 500) + 50).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {/* Mock data for rate */}
+                      <span className="text-gray-900">{(Math.random() * 5 + 2).toFixed(2)}%</span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatDate(page.updated_at)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900">
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/builder/${page.session_id}`}>Edit in Builder</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild disabled={!page.deployment_url}>
+                              <Link href={page.deployment_url || "#"} target="_blank">Visit Site</Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -231,27 +271,30 @@ function StatsCard({
   title,
   value,
   icon: Icon,
+  iconBg,
+  iconColor,
   trend,
 }: {
   title: string;
   value: string;
   icon: any;
+  iconBg: string;
+  iconColor: string;
   trend: string;
 }) {
   return (
-    <Card className="p-6 border border-border shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <h3 className="mt-2 text-3xl font-bold text-foreground">{value}</h3>
-        </div>
-        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-          <Icon className="h-5 w-5" />
+    <Card className="p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-gray-600">{title}</p>
+        <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
       </div>
-      <div className="mt-4 flex items-center text-xs">
-         <span className="text-green-600 font-medium">{trend}</span>
-      </div>
+      <h2 className="text-gray-900 text-2xl font-semibold">{value}</h2>
+      <p className="text-sm text-green-600 flex items-center mt-2">
+        <TrendingUp className="w-3 h-3 mr-1" />
+        {trend}
+      </p>
     </Card>
   );
 }
