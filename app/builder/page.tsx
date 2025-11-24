@@ -198,18 +198,18 @@ export default function BuilderPage() {
 
   return (
     <AuthGuard>
-      <div className="h-screen w-full flex flex-col overflow-hidden bg-white">
+      <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
       {/* Top bar */}
-      <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 lg:px-8 relative z-10">
+      <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex items-center gap-4">
            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => router.push('/dashboard')}>
-              <ArrowLeft className="h-4 w-4 text-gray-600" />
+              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
            </Button>
            <div className="flex items-center gap-2">
-             <h1 className="text-sm font-semibold text-gray-900">
+             <h1 className="text-sm font-semibold text-foreground">
                 {sessionId ? `Project ${sessionId.slice(0, 8)}` : "New Project"}
              </h1>
-             <span className={`inline-flex h-2 w-2 rounded-full ${status === 'streaming' ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+             <span className={`inline-flex h-2 w-2 rounded-full ${status === 'streaming' ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
            </div>
         </div>
         <div className="flex items-center gap-2">
@@ -220,7 +220,7 @@ export default function BuilderPage() {
            <Button size="sm" onClick={() => router.push('/create')}>
               New
            </Button>
-           <Button size="sm" className="bg-black text-white hover:bg-gray-800" disabled>
+           <Button size="sm" className="bg-black text-white hover:bg-black/90" disabled>
               Deploy
            </Button>
         </div>
@@ -228,7 +228,7 @@ export default function BuilderPage() {
 
       <div className="flex-1 flex min-h-0">
         {/* Chat Panel - Fixed 420px */}
-        <div className="w-[420px] flex flex-col border-r border-gray-200 bg-white">
+        <div className="w-[420px] flex flex-col border-r border-border bg-card">
             <ChatPane
               messages={messages}
               status={status}
@@ -249,16 +249,16 @@ export default function BuilderPage() {
         </div>
 
         {/* Preview Panel - Flex 1 */}
-        <div className="flex-1 flex flex-col min-w-0 bg-gray-50 relative">
+        <div className="flex-1 flex flex-col min-w-0 bg-muted relative">
             {/* Preview Toolbar */}
-            <div className="h-12 border-b border-gray-200 bg-white flex items-center justify-between px-4">
-                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+            <div className="h-12 border-b border-border bg-card flex items-center justify-between px-4">
+                <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
                                     onClick={() => setPreviewMode('desktop')}
-                                    className={`p-1.5 rounded-md transition-all ${previewMode === 'desktop' ? 'bg-white shadow-sm text-[#7269F8]' : 'text-gray-500 hover:text-gray-900'}`}
+                                    className={`p-1.5 rounded-md transition-all ${previewMode === 'desktop' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
                                     <Monitor className="w-4 h-4" />
                                 </button>
@@ -271,7 +271,7 @@ export default function BuilderPage() {
                             <TooltipTrigger asChild>
                                 <button
                                     onClick={() => setPreviewMode('mobile')}
-                                    className={`p-1.5 rounded-md transition-all ${previewMode === 'mobile' ? 'bg-white shadow-sm text-[#7269F8]' : 'text-gray-500 hover:text-gray-900'}`}
+                                    className={`p-1.5 rounded-md transition-all ${previewMode === 'mobile' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
                                     <Smartphone className="w-4 h-4" />
                                 </button>
@@ -281,7 +281,7 @@ export default function BuilderPage() {
                     </TooltipProvider>
                 </div>
                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-muted-foreground">
                         {previewMode === 'desktop' ? '100%' : '390px'}
                     </span>
                  </div>
@@ -290,7 +290,7 @@ export default function BuilderPage() {
             {/* Preview Container */}
             <div className="flex-1 overflow-hidden flex items-center justify-center p-8">
                 <div 
-                    className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${
+                    className={`bg-card rounded-lg shadow-sm border border-border overflow-hidden transition-all duration-300 ease-in-out ${
                         previewMode === 'mobile' ? 'w-[375px] h-[667px]' : 'w-full h-full max-w-[1200px]'
                     }`}
                 >
@@ -305,9 +305,9 @@ export default function BuilderPage() {
             </div>
 
              {toolStatus?.shouldRender && (
-              <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-lg animate-in slide-in-from-bottom-4">
-                <div className="h-4 w-4 border-2 border-gray-200 border-t-[#7269F8] rounded-full animate-spin" />
-                <span className="text-xs font-medium text-gray-600">
+              <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-lg animate-in slide-in-from-bottom-4">
+                <div className="h-4 w-4 border-2 border-border border-t-primary rounded-full animate-spin" />
+                <span className="text-xs font-medium text-muted-foreground">
                   {toolStatus.text || 'Working...'}
                 </span>
               </div>

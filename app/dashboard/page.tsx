@@ -63,8 +63,8 @@ function StatusBadge({ status }: { status: LandingPageRecord["status"] }) {
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs ${
       isPublished 
-        ? 'bg-green-100 text-green-800' 
-        : 'bg-gray-100 text-gray-800'
+        ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400' 
+        : 'bg-gray-100 text-gray-800 dark:bg-gray-500/15 dark:text-gray-300'
     }`}>
       {isPublished ? '● Published' : '● Draft'}
     </span>
@@ -86,11 +86,11 @@ export default function DashboardHomePage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 -mx-8 -mt-6 px-8 py-6 mb-8">
+      <div className="bg-card border-b border-border -mx-8 -mt-6 px-8 py-6 mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-gray-900 text-2xl font-semibold">Landing Pages</h1>
-            <p className="text-gray-600">Manage and track your landing pages</p>
+            <h1 className="text-foreground text-2xl font-semibold">Landing Pages</h1>
+            <p className="text-muted-foreground">Manage and track your landing pages</p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" className="gap-2">
@@ -124,63 +124,63 @@ export default function DashboardHomePage() {
           title="Total Views"
           value={totalViews.toLocaleString()}
           icon={Eye}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
+          iconBg="bg-blue-500/10"
+          iconColor="text-blue-600 dark:text-blue-400"
           trend="+12.5% from last month"
         />
         <StatsCard
           title="Total Conversions"
           value={totalConversions.toString()} // Placeholder mock data mismatch correction
           icon={Users}
-          iconBg="bg-green-50"
-          iconColor="text-green-600"
+          iconBg="bg-green-500/10"
+          iconColor="text-green-600 dark:text-green-400"
           trend="+8.2% from last month"
         />
         <StatsCard
           title="Avg. Conversion Rate"
           value={conversionRate}
           icon={TrendingUp}
-          iconBg="bg-purple-50"
+          iconBg="bg-[#7269F8]/10"
           iconColor="text-[#7269F8]"
           trend="+2.1% from last month"
         />
       </div>
 
       {/* Recent Activity Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-gray-900 font-medium">Your Landing Pages</h3>
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <h3 className="text-foreground font-medium">Your Landing Pages</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Name</th>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">URL</th>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Status</th>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Views</th>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Conversions</th>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Conv. Rate</th>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Created</th>
-                <th className="px-6 py-3 text-left text-sm text-gray-600 font-medium">Actions</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">Name</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">URL</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">Status</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">Views</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">Conversions</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">Conv. Rate</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">Created</th>
+                <th className="px-6 py-3 text-left text-sm text-muted-foreground font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-10 text-center text-muted-foreground">
                     Loading...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                   <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
+                   <td colSpan={8} className="px-6 py-10 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-16 h-16 rounded-full bg-[#7269F8]/10 flex items-center justify-center mb-4">
                           <Plus className="w-8 h-8 text-[#7269F8]" />
                         </div>
-                        <h3 className="text-gray-900 mb-2 font-medium">No landing pages yet</h3>
-                        <p className="text-gray-600 mb-6">Create your first AI-powered landing page in minutes</p>
+                        <h3 className="text-foreground mb-2 font-medium">No landing pages yet</h3>
+                        <p className="text-muted-foreground mb-6">Create your first AI-powered landing page in minutes</p>
                         <Button 
                           asChild
                           className="bg-[#7269F8] hover:bg-[#5d56e0] text-white"
@@ -195,9 +195,9 @@ export default function DashboardHomePage() {
                 </tr>
               ) : (
                 items.slice(0, 5).map((page) => (
-                  <tr key={page.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={page.id} className="hover:bg-muted/40 transition-colors">
                     <td className="px-6 py-4">
-                      <p className="text-gray-900 font-medium">{page.business_data?.campaign?.productName || "Untitled Project"}</p>
+                      <p className="text-foreground font-medium">{page.business_data?.campaign?.productName || "Untitled Project"}</p>
                     </td>
                     <td className="px-6 py-4">
                       <a 
@@ -213,19 +213,19 @@ export default function DashboardHomePage() {
                     <td className="px-6 py-4">
                       <StatusBadge status={page.status} />
                     </td>
-                    <td className="px-6 py-4 text-gray-900 text-sm">
+                    <td className="px-6 py-4 text-foreground text-sm">
                       {/* Mock data for views */}
                       {(Math.floor(Math.random() * 10000) + 1000).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-gray-900 text-sm">
+                    <td className="px-6 py-4 text-foreground text-sm">
                       {/* Mock data for conversions */}
                       {(Math.floor(Math.random() * 500) + 50).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {/* Mock data for rate */}
-                      <span className="text-gray-900">{(Math.random() * 5 + 2).toFixed(2)}%</span>
+                      <span className="text-foreground">{(Math.random() * 5 + 2).toFixed(2)}%</span>
                     </td>
-                    <td className="px-6 py-4 text-gray-600 text-sm">
+                    <td className="px-6 py-4 text-muted-foreground text-sm">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {formatDate(page.updated_at)}
@@ -233,15 +233,15 @@ export default function DashboardHomePage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
                           <Copy className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-red-600">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -283,15 +283,15 @@ function StatsCard({
   trend: string;
 }) {
   return (
-    <Card className="p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+    <Card className="p-6 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-gray-600">{title}</p>
+        <p className="text-muted-foreground">{title}</p>
         <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center`}>
           <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
       </div>
-      <h2 className="text-gray-900 text-2xl font-semibold">{value}</h2>
-      <p className="text-sm text-green-600 flex items-center mt-2">
+      <h2 className="text-foreground text-2xl font-semibold">{value}</h2>
+      <p className="text-sm text-green-600 dark:text-green-400 flex items-center mt-2">
         <TrendingUp className="w-3 h-3 mr-1" />
         {trend}
       </p>
