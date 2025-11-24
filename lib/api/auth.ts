@@ -82,8 +82,17 @@ export async function register(body: RegisterBody): Promise<AuthTokens> {
     throw new Error(text || `Registration failed with status ${res.status}`);
   }
 
-  const data = (await res.json()) as LoginResponse;
-  return normalizeTokens(data);
+  // The register endpoint returns user info, not tokens.
+  // After successful registration, perform a login to obtain tokens.
+  // Ignore the register response body beyond basic validation.
+  try {
+    await res.json();
+  } catch {
+    // no-op: some backends may return empty body
+  }
+  // Now log in with the same credentials to get tokens
+  const tokens = await login(body.email, body.password);
+  return tokens;
 }
 
 export async function getCurrentUser(accessToken: string): Promise<AuthUser> {
